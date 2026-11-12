@@ -1,3 +1,17 @@
+SpeakFlow English v3.3.1 - YouTube字幕取得の修正版（v3.3 ベース）
+
+【v3.3.1の変更（今回）】
+- YouTube字幕の自動取得で「Sign in to confirm you're not a bot」エラーが出て
+  取得できなかった問題の対策。app.py の yt-dlp 設定に
+  extractor_args youtube player_client ["android","ios","web"] を追加し、
+  WebプレイヤーではなくAndroid/iOSプレイヤーで取得を試すようにした。
+  取得できない場合は次のクライアントにフォールバックする。
+- 変更は app.py とこの README.txt のみ。ほかのファイルは v3.3 と同じ。
+- 注意：ローカルでは修正版・旧版どちらも取得できたため、この修正が
+  RenderのIPでのブロックを回避できるかは、Render上で実際に試すまで
+  確定しない。Renderで試してダメな場合は、別の動画・SRT/VTT読み込み・
+  「＋ 登録」の手入力を使ってください。
+
 SpeakFlow English v3.3 - スマホ「＋登録」画面 追加版（v3.2 ベース）
 
 【v3.3の変更（今回）】

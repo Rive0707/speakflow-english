@@ -224,7 +224,11 @@ def captions(url: str = Query(..., min_length=8, max_length=2048), merge: bool =
     if not re.fullmatch(r"[\w-]{11}", video_id or ""):
         raise HTTPException(400, "YouTube URLを正しく入力してください")
     url=f"https://www.youtube.com/watch?v={video_id}"
-    opts={"quiet":True,"no_warnings":True,"skip_download":True,"noplaylist":True,"socket_timeout":20}
+    # v3.3.1: YouTubeのボット判定("Sign in to confirm you're not a bot")を
+    # 回避するため、WebプレイヤーではなくAndroid/iOSプレイヤーで取得を試す。
+    # player_clientのリスト順に試行し、ダメなら次にフォールバックする。
+    opts={"quiet":True,"no_warnings":True,"skip_download":True,"noplaylist":True,"socket_timeout":20,
+          "extractor_args":{"youtube":{"player_client":["android","ios","web"]}}}
     try:
         from yt_dlp import YoutubeDL
         with YoutubeDL(opts) as ydl:
