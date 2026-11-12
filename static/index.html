@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>SpeakFlow English</title>
+<style>
+:root{--bg:#0a101b;--panel:#111d2d;--panel2:#17263a;--line:#2a3b52;--text:#eef4fc;--muted:#9aabc0;--blue:#91baff;--green:#85dfb0;--yellow:#f2cb7d}
+*{box-sizing:border-box}.divider{height:1px;background:var(--line);margin:12px 0}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Noto Sans JP",sans-serif}
+button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit}
+.app{max-width:1180px;margin:auto;padding:14px 14px 90px}
+header{display:flex;align-items:center;justify-content:space-between;margin:4px 0 15px}.logo{font-size:21px;font-weight:850}.logo span{color:var(--blue)}.muted,.hint{color:var(--muted);font-size:12px}
+.btn{border:0;border-radius:11px;background:var(--blue);color:#091424;font-weight:750;padding:10px 14px}.btn.secondary{background:#233852;color:var(--text);border:1px solid #38516d}.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.field{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#0c1726;color:var(--text);min-width:0}.field:focus{outline:2px solid #4778b8;border-color:transparent}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px;margin:11px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row .fit{flex:0 0 auto}
+h1{font-size:24px;margin:4px 0 8px}h2{font-size:17px;margin:0 0 9px}h3{font-size:14px;margin:0 0 6px}
+.tag{font-size:11px;color:var(--blue);font-weight:800;letter-spacing:.9px}
+.workspace{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.85fr);gap:12px;align-items:start}
+.video{aspect-ratio:16/9;background:#02050a;border-radius:12px;overflow:hidden;border:1px solid var(--line)}.video iframe{width:100%;height:100%;border:0}
+.placeholder{height:100%;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted)}
+.subhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.captionBox{background:#0b1625;border:1px solid var(--line);border-radius:12px;padding:13px;min-height:135px}
+.cue{padding:9px 10px;border-radius:10px;margin:5px 0;background:#101e30;border:1px solid transparent;cursor:pointer}
+.cue.active{border-color:#6595d5;background:#1a2d45}
+.cue .time{font-size:10px;color:var(--muted);display:block}.cue .en{font-size:15px;font-weight:700}.cue .ja{font-size:13px;color:#c0ccdc;margin-top:3px}
+.word{border:0;background:transparent;color:var(--blue);padding:0;text-decoration:underline;text-decoration-color:#526f94;text-underline-offset:3px;font-weight:700}
+.transcript{max-height:440px;overflow:auto}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.explain{background:#0c1726;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:180px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0c1625ee;border-top:1px solid var(--line);display:flex;justify-content:center;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);z-index:10}
+nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;border-radius:9px;font-size:12px}nav button.active{background:#203650;color:white}
+.page{display:none}.page.active{display:block}
+.listItem{padding:10px;border:1px solid var(--line);border-radius:10px;margin:7px 0;background:#0d1827}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#243a54;padding:10px 15px;border-radius:10px;display:none;z-index:20}
+@media(max-width:800px){.workspace{grid-template-columns:1fr}.app{padding:10px 10px 90px}.transcript{max-height:330px}}
+.seg{display:flex;margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden}.seg button{flex:1;background:transparent;border:0;padding:8px 4px;font-size:12px;color:var(--muted)}.seg button.on{background:#203650;color:#fff}.seg+.hint,.ctlLabel{margin:10px 0 0}
+.btn.secondary.on{background:var(--blue);color:#091424;border-color:var(--blue)}
+#learn.m-en .cue .ja,#learn.m-en #currentJa{display:none}
+#learn.m-hide .cue .en,#learn.m-hide .cue .ja,#learn.m-hide #currentEn,#learn.m-hide #currentJa{filter:blur(7px);user-select:none}
+#learn.m-hide #capBox.revealed #currentEn,#learn.m-hide #capBox.revealed #currentJa{filter:none;user-select:auto}
+#learn.m-hide #capBox:not(.revealed)::after{content:"タップして表示";display:block;font-size:11px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div><div class="logo">Speak<span>Flow</span> English</div><div class="muted">Watch it. Understand it. Use it.</div></div><button class="btn ghost" id="install" hidden>Install app</button></header>
+
+<section id="learn" class="page active">
+ <div class="tag">VIDEO LEARNING WORKSPACE</div>
+ <h1>動画の英語を、自分の英語に。</h1>
+ <div class="panel">
+  <div class="row"><input id="url" class="field" placeholder="YouTube URLを貼り付け"><button id="load" class="btn fit">動画を開く</button></div>
+  <p class="hint">動画URLを入力して「字幕を自動取得」を押すと、取得可能な英語・日本語字幕を読み込みます。</p>
+ </div>
+ <div class="workspace">
+  <div>
+   <div class="video" id="player"><div class="placeholder">YouTube URLを入力すると<br>ここに動画が表示されます</div></div>
+   <div class="panel">
+    <div class="subhead"><h2>YouTube字幕の自動取得</h2><span class="muted" id="fileStatus">未読み込み</span></div>
+    <div class="row"><button class="btn" id="autoSubs">字幕を自動取得</button><span class="hint" id="autoStatus">公開動画の字幕・自動生成字幕に対応</span></div>
+    <label class="hint" style="display:block;margin-top:6px"><input type="checkbox" id="mergeSub" checked> 自動字幕を文のまとまりにする</label>
+    <p class="hint">字幕が取得できない動画もあります。取得できない場合は、下から字幕ファイルを読み込めます。</p>
+    <div class="divider"></div>
+    <h3>字幕ファイルから読み込む（予備）</h3>
+    <label class="hint">英語字幕（SRT / VTT）</label><input id="enFile" class="field" type="file" accept=".srt,.vtt" style="margin:4px 0 10px">
+    <label class="hint">日本語字幕（SRT / VTT・任意）</label><input id="jaFile" class="field" type="file" accept=".srt,.vtt" style="margin:4px 0 10px">
+    <div class="row"><button class="btn secondary" id="loadSubs">字幕を読み込む</button><button class="btn ghost" id="clearSubs">クリア</button></div>
+    <p class="hint">英語と日本語の字幕ファイルは、同じ動画・同じ時間軸のものを使ってください。日本語字幕がない場合は英語だけでも学習できます。</p>
+   </div>
+   <div class="panel">
+    <div class="subhead"><h2>字幕一覧</h2><span class="muted" id="count">0件</span></div>
+    <input id="filter" class="field" placeholder="字幕を検索..." style="margin-bottom:8px">
+    <div id="transcript" class="transcript"><p class="muted">字幕ファイルを読み込むと、ここに表示されます。</p></div>
+   </div>
+  </div>
+  <div>
+   <div class="panel">
+    <div class="subhead"><h2>いまの字幕</h2><span class="muted" id="nowTime">--:--</span></div>
+    <div class="captionBox" id="capBox">
+     <div id="currentEn" style="font-size:18px;font-weight:750">動画を再生して字幕を選択してください。</div>
+     <div id="currentJa" style="color:#bdcada;margin-top:8px"></div>
+    </div>
+    <div class="row" style="margin-top:9px"><button class="btn secondary" id="prev">← 前の字幕</button><button class="btn secondary" id="next">次の字幕 →</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn secondary" id="repeat">▶ この字幕を再生</button><button class="btn secondary" id="speak">🔊 英文を聞く</button></div>
+    <div class="ctlLabel hint">再生速度</div>
+    <div class="seg" id="speedSeg"><button data-rate="0.5">0.5x</button><button data-rate="0.75">0.75x</button><button data-rate="1">1x</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn secondary" id="loopBtn">🔁 ループ: OFF</button></div>
+    <div class="ctlLabel hint">字幕の表示</div>
+    <div class="seg" id="modeSeg"><button data-mode="both">英+日</button><button data-mode="en">英語のみ</button><button data-mode="hide">聞き取り</button></div>
+    <p class="hint">字幕を選ぶと動画がその時間に移動します。ループONで「この字幕を再生」を押すと、その1文を繰り返します（OFFなら1回で止まります）。聞き取りモードは、字幕をぼかして先に耳で確認できます。</p>
+   </div>
+   <div class="panel">
+    <div class="tag">TAP TO UNDERSTAND</div><h2 style="margin-top:4px">単語・表現の解説</h2>
+    <div class="explain" id="explain"><p class="muted">字幕内の青い単語をタップすると、ここに意味や使い方を表示します。</p></div>
+    <div class="row" style="margin-top:8px"><button class="btn secondary" id="saveExpression">＋ フレーズ保存</button><button class="btn ghost" id="explainAI">AIで詳しく解説</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn secondary" id="saveCue">＋ 字幕全文を保存</button></div>
+    <p class="hint">「フレーズ保存」はタップした単語1つ、「字幕全文を保存」は今の字幕1文まるごと保存します。</p>
+    <p class="hint">単語をタップすると発音が流れます。意味・ニュアンスの解説にはGemini APIキー（任意）が必要です。</p>
+   </div>
+   <div class="panel">
+    <h2>AI設定（任意）</h2>
+    <input id="apiKey" class="field" type="password" placeholder="Gemini API key">
+    <div class="row" style="margin-top:8px"><button class="btn secondary" id="saveKey">端末に保存</button><button class="btn ghost" id="deleteKey">削除</button></div>
+    <p class="hint" id="keyStatus">APIキーなしでも字幕・動画・保存機能を利用できます。</p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="add" class="page">
+ <div class="tag">QUICK ADD &mdash; NETFLIX / MEMO</div><h1>気になる英文をすぐ登録</h1>
+ <div class="panel"><p class="muted">Netflixアプリで見た英文を、その場で手入力・音声入力して保存します。作品名は一度入力すれば、次からタップで選べます。</p>
+  <label class="hint">作品名（例：Brooklyn Nine-Nine）</label>
+  <input id="addTitle" class="field" list="addTitleList" placeholder="作品名を入力" autocomplete="off" style="margin:5px 0 9px">
+  <datalist id="addTitleList"></datalist>
+  <div id="addTitleChips" class="row" style="margin:0 0 9px"></div>
+  <div class="two">
+   <div><label class="hint">シーズン（任意）</label><input id="addSeason" class="field" type="number" min="1" placeholder="1" style="margin:5px 0 9px"></div>
+   <div><label class="hint">エピソード（任意）</label><input id="addEpisode" class="field" type="number" min="1" placeholder="1" style="margin:5px 0 9px"></div>
+  </div>
+  <label class="hint">再生時間（任意・例：12:34 / 1:02:03）</label>
+  <input id="addTime" class="field" placeholder="12:34" inputmode="numeric" style="margin:5px 0 9px">
+  <label class="hint">英文（必須・スマホの音声入力も使えます）</label>
+  <textarea id="addEn" class="field" rows="4" placeholder="例：No way. That&apos;s insane." style="margin:5px 0 9px;resize:vertical"></textarea>
+  <label class="hint">日本語訳（「翻訳・解説をつける」で自動入力・あとから修正できます）</label>
+  <textarea id="addJa" class="field" rows="3" placeholder="日本語訳がここに入ります" style="margin:5px 0 9px;resize:vertical"></textarea>
+  <div id="addExplain" class="explain" style="min-height:0;display:none"></div>
+  <div class="row"><button class="btn secondary" id="addTranslate">翻訳・解説をつける</button><button class="btn" id="addSave">＋ この英文を保存</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn ghost" id="addClear">入力をクリア</button><button class="btn ghost" id="addGoReview">保存した表現を見る</button></div>
+  <p class="hint" id="addStatus">保存すると「保存表現」に追加され、PCで登録した分と同期できます（同期設定が必要です）。</p>
+ </div>
+</section>
+
+<section id="review" class="page">
+ <div class="tag">MY EXPRESSIONS</div><h1>保存した表現</h1>
+ <div class="panel"><p class="muted">動画で見つけた表現を、あとで見直したり音声で確認できます。</p><div class="row"><button class="btn secondary" id="export">TSVで出力</button><button class="btn ghost" id="backup">バックアップ</button></div><div id="savedList"></div></div>
+</section>
+
+<section id="settings" class="page">
+ <div class="tag">HOW IT WORKS</div><h1>使い方と制限</h1>
+ <div class="panel">
+  <h2>字幕について</h2>
+  <p>YouTube字幕の自動取得にはサーバー側のyt-dlpを利用します。YouTubeの仕様変更、地域制限、年齢制限、ログイン要求、字幕がない動画などでは取得できない場合があります。無料ホスティングでは初回起動に時間がかかることがあります。</p>
+  <p>自動取得は同梱のPythonバックエンド（yt-dlp）経由で行います。YouTube側の仕様変更・動画の公開範囲・地域/年齢/ログイン制限などにより、すべての動画で成功する保証はありません。</p>
+  <div class="divider"></div>
+  <div class="divider"></div>
+  <h2>PC Netflix連携・スマホ同期</h2>
+  <p>PCのChrome拡張機能で保存したNetflix字幕を、このSpeakFlowに同期します。PC側と同じSpeakFlowサーバーURL・同期トークンを設定してください。</p>
+  <label class="hint">SpeakFlowサーバーURL（末尾の / は不要）</label>
+  <input id="syncUrl" class="field" placeholder="https://your-app.onrender.com" style="margin:5px 0 9px">
+  <label class="hint">同期トークン（サーバーで設定した場合）</label>
+  <input id="syncToken" class="field" type="password" placeholder="SPEAKFLOW_SYNC_TOKEN" style="margin:5px 0 9px">
+  <div class="row"><button class="btn secondary" id="saveSync">同期設定を保存</button><button class="btn" id="syncNow">今すぐ同期</button></div>
+  <p class="hint" id="syncStatus">PCで登録した字幕をスマホに取り込みます。</p>
+  <div class="divider"></div>
+  <h2>プライバシー</h2>
+  <p>単語をタップすると、その単語が辞書API（dictionaryapi.dev）と翻訳API（MyMemory）に送信されます。</p>
+  <p>字幕ファイルの処理と保存フレーズは基本的に端末内で行います。Gemini APIキーを登録してAI解説を使う場合、選択した表現と文脈がGoogleのAPIに送信されます。</p>
+ </div>
+</section>
+</div>
+<nav><button class="active" data-page="learn">▶ 学習</button><button data-page="add">＋ 登録</button><button data-page="review">♡ 保存表現</button><button data-page="settings">⚙ 使い方</button></nav>
+<div class="toast" id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+const DB='speakflow_v2_phrases';
+let phrases=JSON.parse(localStorage.getItem(DB)||'[]'),enCues=[],jaCues=[],merged=[],active=-1,selectedText='',selectedCue=null,player=null,playerReady=false,deferred=null,currentVid='',currentTitle='',subsVid='',lock=null,loopOn=false,gloss='',rate=+(localStorage.getItem('sf_rate')||1),viewMode=localStorage.getItem('sf_mode')||'both';
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2200)}
+function page(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='review')renderSaved();if(id==='add')refreshAddTitles()}
+document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));
+function ytId(raw){try{let u=new URL(raw);if(u.hostname==='youtu.be')return u.pathname.slice(1);if(u.hostname.endsWith('youtube.com'))return u.searchParams.get('v')||u.pathname.split('/').filter(Boolean).pop()}catch{}return ''}
+function loadVideo(id,start=0,autoplay=false){
+ if(!id)return;
+ if(player&&playerReady&&currentVid===id){if(start||autoplay){player.seekTo(start,true);player.playVideo()}return}
+ if(subsVid&&subsVid!==id)$('clearSubs').onclick();
+ currentVid=id;currentTitle='';playerReady=false;lock=null;
+ try{player&&player.destroy&&player.destroy()}catch{}
+ player=null;
+ $('player').innerHTML='<div id="ytplayer" style="width:100%;height:100%"></div>';
+ const go=()=>makePlayer(id,start,autoplay);
+ if(window.YT&&YT.Player)go();
+ else{window.onYouTubeIframeAPIReady=go;if(!document.getElementById('ytapi')){let s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';document.head.append(s)}}
+}
+$('load').onclick=()=>{let id=ytId($('url').value.trim());if(!id){toast('YouTube URLを確認してください');return}loadVideo(id)};
+function makePlayer(id,start=0,autoplay=false){player=new YT.Player('ytplayer',{videoId:id,width:'100%',height:'100%',playerVars:{playsinline:1,rel:0,start:Math.floor(start)},events:{onReady:()=>{playerReady=true;player.setPlaybackRate(rate);if(autoplay)player.playVideo();toast('動画を読み込みました')}}})}
+function openScene(vid,t){page('learn');$('url').value='https://youtu.be/'+vid;
+ if(currentVid===vid&&playerReady){player.seekTo(t,true);player.playVideo()}else loadVideo(vid,t,true);
+ window.scrollTo({top:0,behavior:'smooth'})}
+function buildMerged(){
+ merged=enCues.map(e=>({...e,ja:''}));
+ if(!jaCues.length||!merged.length)return;
+ let parts=merged.map(()=>[]),k=0;
+ for(const j of jaCues){
+  while(k+1<merged.length&&merged[k+1].start<=j.start+0.4)k++;
+  if(j.start>merged[k].end+5)continue;
+  parts[k].push(j.text)
+ }
+ merged.forEach((m,i)=>m.ja=parts[i].join(' '))
+}
+function parseTime(t){let a=t.trim().replace(',','.').split(':').map(Number);return a.length===3?a[0]*3600+a[1]*60+a[2]:a[0]*60+a[1]}
+function parseSrt(raw){let blocks=raw.replace(/^\uFEFF/,'').replace(/\r/g,'').replace(/<br\s*\/?>/gi,' ').split(/\n\s*\n/),out=[];for(let b of blocks){let lines=b.split('\n').map(x=>x.trim()).filter(Boolean),i=lines.findIndex(x=>x.includes('-->'));if(i<0)continue;let m=lines[i].split('-->');let start=parseTime(m[0]),end=parseTime(m[1].trim().split(/\s/)[0]);let text=lines.slice(i+1).join(' ').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"');if(text)out.push({start,end,text})}return out}
+
+$('autoSubs').onclick=async()=>{
+ const url=$('url').value.trim();
+ if(!ytId(url)){toast('先にYouTube URLを入力してください');return}
+ const btn=$('autoSubs');btn.disabled=true;btn.textContent='字幕を取得中...';$('autoStatus').textContent='動画の字幕トラックを確認しています';
+ try{
+  const r=await fetch('/api/captions?url='+encodeURIComponent(url)+'&merge='+($('mergeSub').checked?1:0));
+  const data=await r.json();
+  if(!r.ok)throw new Error(data.detail||data.error||'字幕を取得できませんでした');
+  enCues=data.english||[];jaCues=data.japanese||[];subsVid=ytId(url);if(currentVid!==subsVid)loadVideo(subsVid);currentTitle=data.title||'';
+  if(!enCues.length)throw new Error('英語字幕が見つかりませんでした。この動画は字幕非対応の可能性があります。');
+  buildMerged();
+  active=0;renderTranscript();showCue(0);$('count').textContent=merged.length+'件';
+  $('fileStatus').textContent=`自動取得 EN ${enCues.length} / JA ${jaCues.length}`;
+  $('autoStatus').textContent=(data.english_source||'字幕')+' / '+(data.japanese_source||'日本語字幕なし');
+  toast('字幕を自動取得しました');
+ }catch(e){$('autoStatus').textContent=e.message;toast('取得できませんでした: '+e.message)}
+ finally{btn.disabled=false;btn.textContent='字幕を自動取得'}
+};
+$('loadSubs').onclick=async()=>{let ef=$('enFile').files[0],jf=$('jaFile').files[0];if(!ef){toast('英語字幕ファイルを選んでください');return}enCues=parseSrt(await ef.text());jaCues=jf?parseSrt(await jf.text()):[];subsVid=currentVid;buildMerged();active=0;renderTranscript();showCue(0);$('fileStatus').textContent=`EN ${enCues.length} / JA ${jaCues.length}`;$('count').textContent=merged.length+'件';toast('字幕を読み込みました')};
+$('clearSubs').onclick=()=>{subsVid='';lock=null;enCues=[];jaCues=[];merged=[];active=-1;$('transcript').innerHTML='';$('currentEn').textContent='字幕を読み込んでください';$('currentJa').textContent='';$('count').textContent='0件'};
+function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderTranscript(){let q=$('filter').value.toLowerCase();$('transcript').innerHTML='';merged.forEach((c,i)=>{if(q&&!c.text.toLowerCase().includes(q)&&!c.ja.includes(q))return;let d=document.createElement('div');d.className='cue'+(i===active?' active':'');d.innerHTML=`<span class="time">${fmt(c.start)}</span><div class="en">${escapeHTML(c.text)}</div><div class="ja">${escapeHTML(c.ja||'')}</div>`;d.onclick=()=>showCue(i,true);$('transcript').append(d)})}
+function fmt(s){let m=Math.floor(s/60),sec=Math.floor(s%60);return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+function showCue(i,seek=false){if(!merged.length)return;if(seek)lock=null;let prevCue=selectedCue;active=Math.max(0,Math.min(merged.length-1,i));selectedCue=merged[active];if(prevCue!==selectedCue)$('capBox').classList.remove('revealed');$('nowTime').textContent=fmt(selectedCue.start);$('currentEn').innerHTML=wordHTML(selectedCue.text);$('currentJa').textContent=selectedCue.ja||'日本語字幕なし';$('currentEn').querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>selectWord(b.dataset.word));if(seek&&playerReady)player.seekTo(selectedCue.start,true);renderTranscript();let activeEl=$('transcript').querySelector('.cue.active');if(activeEl)activeEl.scrollIntoView({block:'nearest'})}
+function wordHTML(t){return t.split(/(\s+)/).map(part=>/^[A-Za-z][A-Za-z'-]*[.,!?;:]?$/.test(part)?`<button class="word" data-word="${escapeHTML(part.replace(/[.,!?;:]$/,''))}">${escapeHTML(part)}</button>`:escapeHTML(part)).join('')}
+const dictCache={};
+function wordCandidates(w){
+ let b=w.toLowerCase().replace(/[’]/g,"'").replace(/'s$/,''),c=[b];
+ if(b.endsWith('ies'))c.push(b.slice(0,-3)+'y');
+ if(b.endsWith('es'))c.push(b.slice(0,-2));
+ if(b.endsWith('s'))c.push(b.slice(0,-1));
+ if(b.endsWith('ied'))c.push(b.slice(0,-3)+'y');
+ if(b.endsWith('ed')){c.push(b.slice(0,-2));c.push(b.slice(0,-1));if(/(.)\1ed$/.test(b))c.push(b.slice(0,-3))}
+ if(b.endsWith('ing')){c.push(b.slice(0,-3));c.push(b.slice(0,-3)+'e');if(/(.)\1ing$/.test(b))c.push(b.slice(0,-4))}
+ if(b.endsWith('ly'))c.push(b.slice(0,-2));
+ return [...new Set(c)].filter(x=>x.length>1)
+}
+async function lookup(w){
+ const key=w.toLowerCase();if(dictCache[key])return dictCache[key];
+ let entry=null,ja='';
+ for(const c of wordCandidates(w)){
+  try{let r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(c));if(r.ok){entry=(await r.json())[0];break}}catch{break}
+ }
+ try{let r=await fetch('https://api.mymemory.translated.net/get?langpair=en|ja&q='+encodeURIComponent(w));let j=await r.json();ja=j?.responseData?.translatedText||'';if(/MYMEMORY|INVALID|QUERY LENGTH/i.test(ja))ja=''}catch{}
+ return dictCache[key]={entry,ja}
+}
+function dictHTML(d){
+ let e=d.entry,h='';
+ if(d.ja)h+=`<p><b>日本語</b>（参考・機械翻訳）：${escapeHTML(d.ja)}</p>`;
+ if(e){
+  let ph=e.phonetic||(e.phonetics||[]).map(p=>p.text).find(Boolean)||'';
+  h+=`<p class="muted">${escapeHTML(e.word||'')} ${escapeHTML(ph)}</p>`;
+  (e.meanings||[]).slice(0,3).forEach(m=>{
+   let defs=(m.definitions||[]).slice(0,2);
+   h+=`<p><span class="tag">${escapeHTML(m.partOfSpeech||'')}</span><br>`+defs.map(x=>'・'+escapeHTML(x.definition)+(x.example?`<br><span class="muted">例: ${escapeHTML(x.example)}</span>`:'')).join('<br>')+'</p>'
+  })
+ }else h+='<p class="muted">英英辞書に見つかりませんでした（固有名詞・活用形・口語・通信エラーの可能性）。</p>';
+ return h
+}
+function selectWord(w){
+ selectedText=w;gloss='';say(w,.8);
+ $('explain').innerHTML=`<h3>${escapeHTML(w)}</h3><p class="muted">字幕: ${escapeHTML(selectedCue?.text||'')}</p><div id="dict"><p class="muted">辞書を引いています…</p></div>`;
+ lookup(w).then(d=>{if(selectedText!==w)return;gloss=d.ja||'';let el=$('dict');if(el)el.innerHTML=dictHTML(d)+'<p class="hint">文脈に合った意味は「AIで詳しく解説」で確認できます。</p>'})
+}
+$('prev').onclick=()=>showCue(active-1,true);$('next').onclick=()=>showCue(active+1,true);
+$('repeat').onclick=()=>{if(!selectedCue)return;if(playerReady){lock=selectedCue;player.seekTo(selectedCue.start,true);player.playVideo()}else toast('先に動画を読み込んでください')};
+function say(t,rate=.88){if(!t)return;let u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=rate;speechSynthesis.cancel();speechSynthesis.speak(u)}
+$('speak').onclick=()=>selectedCue&&say(selectedCue.text);
+$('filter').oninput=renderTranscript;
+setInterval(()=>{
+ if(!playerReady||!merged.length)return;
+ let t=player.getCurrentTime?.();if(typeof t!=='number')return;
+ if(lock){
+  if(t<lock.start-0.7||t>lock.end+2){lock=null}
+  else if(t>=lock.end+0.1){if(loopOn)player.seekTo(lock.start,true);else{player.pauseVideo();lock=null}return}
+  else return
+ }
+ let i=merged.findIndex(c=>t>=c.start&&t<c.end);if(i>=0&&i!==active)showCue(i,false)
+},250);
+function setRate(r){rate=r;localStorage.setItem('sf_rate',r);document.querySelectorAll('#speedSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.rate===r));if(playerReady)player.setPlaybackRate(r)}
+document.querySelectorAll('#speedSeg button').forEach(b=>b.onclick=()=>setRate(+b.dataset.rate));setRate(rate);
+$('loopBtn').onclick=()=>{loopOn=!loopOn;$('loopBtn').textContent='🔁 ループ: '+(loopOn?'ON':'OFF');$('loopBtn').classList.toggle('on',loopOn)};
+function setMode(m){viewMode=m;localStorage.setItem('sf_mode',m);let L=$('learn');L.classList.toggle('m-en',m==='en');L.classList.toggle('m-hide',m==='hide');$('capBox').classList.remove('revealed');document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m))}
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));setMode(viewMode);
+$('capBox').addEventListener('click',e=>{if(viewMode==='hide'&&!$('capBox').classList.contains('revealed')){e.stopPropagation();e.preventDefault();$('capBox').classList.add('revealed')}},true);
+function savePhrase(en,ja,context){if(!en)return;if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('すでに保存されています');return}phrases.unshift({id:Date.now(),en,ja,context,vid:currentVid,t:selectedCue?selectedCue.start:0,title:currentTitle,created:new Date().toISOString()});localStorage.setItem(DB,JSON.stringify(phrases));toast('フレーズを保存しました')}
+$('saveExpression').onclick=()=>{if(!selectedText){toast('先に字幕内の単語をタップしてください');return}savePhrase(selectedText,gloss,selectedCue?.text||'')};
+$('explainAI').onclick=async()=>{if(!selectedText){toast('先に単語をタップしてください');return}let key=localStorage.getItem('speakflow_gemini_key');if(!key){$('explain').innerHTML+=`<p class="hint">AI解説を使うには、下の設定にGemini APIキーを登録してください。APIキーなしでも基本的な字幕学習は使えます。</p>`;return}let btn=$('explainAI');btn.disabled=true;btn.textContent='解説中...';try{let prompt=`Explain the English expression "${selectedText}" in the context "${selectedCue?.text||''}". Answer in Japanese. Include: meaning in this context, nuance, grammar or word form, one natural everyday example with Japanese translation. Keep it concise and beginner-friendly.`;let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});let j=await r.json();if(!r.ok)throw Error(j.error?.message||'API error');let answer=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'回答を取得できませんでした';let p=document.createElement('p');p.textContent=answer;$('explain').append(p);let save=document.createElement('button');save.className='btn secondary';save.textContent='この表現を保存';save.onclick=()=>savePhrase(selectedText,answer,selectedCue?.text||'');$('explain').append(save)}catch(e){toast('AIエラー: '+e.message)}finally{btn.disabled=false;btn.textContent='AIで詳しく解説'}};
+$('saveKey').onclick=()=>{let k=$('apiKey').value.trim();if(!k){toast('APIキーを入力してください');return}localStorage.setItem('speakflow_gemini_key',k);$('apiKey').value='';$('keyStatus').textContent='APIキーをこの端末に保存しました'};
+$('deleteKey').onclick=()=>{localStorage.removeItem('speakflow_gemini_key');$('keyStatus').textContent='APIキーを削除しました'};
+function renderSaved(){$('savedList').innerHTML='';if(!phrases.length){$('savedList').innerHTML='<p class="muted">保存した表現はまだありません。</p>';return}phrases.forEach(p=>{let d=document.createElement('div');d.className='listItem';let b=document.createElement('b');b.textContent=p.en;let c=document.createElement('p');c.className='muted';c.textContent=[p.ja&&p.ja.length<40?p.ja:'',p.context||(p.ja&&p.ja.length>=40?p.ja:'')].filter(Boolean).join(' / ');let row=document.createElement('div');row.className='row';let play=document.createElement('button');play.className='btn secondary';play.textContent='🔊 聞く';play.onclick=()=>say(p.en);let del=document.createElement('button');del.className='btn ghost';del.textContent='削除';del.onclick=()=>{phrases=phrases.filter(x=>x.id!==p.id);localStorage.setItem(DB,JSON.stringify(phrases));renderSaved()};if(p.vid){let sc=document.createElement('button');sc.className='btn secondary';sc.textContent='▶ '+fmt(p.t||0)+' の場面';sc.onclick=()=>openScene(p.vid,p.t||0);row.append(sc)}row.append(play,del);if(p.title){let tt=document.createElement('div');tt.className='hint';tt.textContent='🎬 '+p.title;d.append(b,c,tt,row)}else d.append(b,c,row);$('savedList').append(d)})}
+function download(content,name,type){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([content],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('export').onclick=()=>download(['English\tJapanese\tContext\tVideo',...phrases.map(p=>[p.en,p.ja,p.context].map(x=>(x||'').replace(/[\t\r\n]+/g,' ')).concat(p.vid?'https://youtu.be/'+p.vid+'?t='+Math.floor(p.t||0):'').join('\t'))].join('\n'),'speakflow-expressions.tsv','text/tab-separated-values');
+$('backup').onclick=()=>download(JSON.stringify(phrases,null,2),'speakflow-phrases.json','application/json');
+// --- Quick Add (Netflix / manual, smartphone) ---
+function parseAddTime(s){
+  s=(s||'').trim(); if(!s) return 0;
+  if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  const parts=s.split(':').map(x=>Number(x));
+  if(parts.some(x=>!Number.isFinite(x)||x<0)) return NaN;
+  let t=0; for(const n of parts) t=t*60+n;
+  return t;
+}
+function fmtStamp(sec){
+  sec=Math.floor(sec||0);
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), ss=sec%60;
+  return [h,m,ss].map(n=>String(n).padStart(2,'0')).join(':');
+}
+function buildAddContext(title,season,episode,stamp){
+  let ctx='Netflix \u00b7 '+(title||'Netflix');
+  const se=[]; if(season) se.push('S'+season); if(episode) se.push('E'+episode);
+  if(se.length) ctx+=' \u00b7 '+se.join(' ');
+  if(stamp) ctx+=' \u00b7 '+stamp;
+  return ctx;
+}
+function saveManualPhrase(en,ja,context,tSec,title){
+  if(!en) return false;
+  if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('\u3059\u3067\u306b\u4fdd\u5b58\u3055\u308c\u3066\u3044\u307e\u3059');return false}
+  phrases.unshift({id:Date.now(),en,ja,context,vid:'',t:tSec||0,title:title||'',created:new Date().toISOString(),source:'netflix'});
+  localStorage.setItem(DB,JSON.stringify(phrases));
+  toast('\u30d5\u30ec\u30fc\u30ba\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f');
+  return true;
+}
+function refreshAddTitles(){
+  const titles=[...new Set(phrases.map(p=>p.title).filter(Boolean))].slice(0,12);
+  const dl=$('addTitleList'); if(dl) dl.innerHTML=titles.map(t=>'<option value="'+escapeHTML(t)+'">').join('');
+  const chips=$('addTitleChips'); if(!chips) return; chips.innerHTML='';
+  titles.slice(0,6).forEach(t=>{const b=document.createElement('button');b.className='btn ghost fit';b.type='button';b.textContent=t;b.onclick=()=>{$('addTitle').value=t};chips.append(b)});
+}
+$('addTranslate').onclick=async()=>{
+  const en=$('addEn').value.trim();
+  if(!en){toast('\u5148\u306b\u82f1\u6587\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
+  const btn=$('addTranslate'); btn.disabled=true; btn.textContent='\u7ffb\u8a33\u4e2d...'; $('addStatus').textContent='\u7ffb\u8a33\u30fb\u89e3\u8aac\u3092\u53d6\u5f97\u3057\u3066\u3044\u307e\u3059\u2026';
+  try{
+    const key=localStorage.getItem('speakflow_gemini_key');
+    if(key){
+      const prompt='Translate the following English sentence into natural Japanese, then briefly explain its nuance and grammar in Japanese for a beginner. English: "'+en.replace(/"/g,"'")+'". Reply in Japanese. Format exactly:\n\u8a33\uff1a...\n\u89e3\u8aac\uff1a...';
+      const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+      const j=await r.json();
+      if(!r.ok) throw new Error(j.error?.message||'API error');
+      const ans=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+      const m=ans.match(/\u8a33[:\uff1a]\s*(.+?)(?:\n|$)/);
+      if(m) $('addJa').value=m[1].trim();
+      else if(ans) $('addJa').value=ans.split('\n')[0];
+      const box=$('addExplain'); box.style.display='block'; box.textContent=ans;
+      $('addStatus').textContent='Gemini\u3067\u7ffb\u8a33\u30fb\u89e3\u8aac\u3092\u4ed8\u3051\u307e\u3057\u305f\u3002\u65e5\u672c\u8a9e\u8a33\u306f\u4fee\u6b63\u3067\u304d\u307e\u3059\u3002';
+    }else{
+      const r=await fetch('https://api.mymemory.translated.net/get?langpair=en|ja&q='+encodeURIComponent(en));
+      const j=await r.json();
+      const ja=j?.responseData?.translatedText||'';
+      if(!ja||/MYMEMORY|INVALID|QUERY LENGTH/i.test(ja)) throw new Error('\u7ffb\u8a33\u3092\u53d6\u5f97\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f');
+      $('addJa').value=ja;
+      const box=$('addExplain'); box.style.display='block';
+      box.innerHTML='<p class="hint">MyMemory\u306b\u3088\u308b\u53c2\u8003\u8a33\u3067\u3059\u3002\u3088\u308a\u81ea\u7136\u306a\u8a33\u3068\u30cb\u30e5\u30a2\u30f3\u30b9\u89e3\u8aac\u304c\u307b\u3057\u3044\u5834\u5408\u306f\u3001\u5b66\u7fd2\u753b\u9762\u306e\u300cAI\u8a2d\u5b9a\u300d\u3067Gemini API\u30ad\u30fc\u3092\u767b\u9332\u3057\u3066\u304f\u3060\u3055\u3044\u3002</p>';
+      $('addStatus').textContent='\u53c2\u8003\u8a33\u3092\u4ed8\u3051\u307e\u3057\u305f\u3002';
+    }
+  }catch(e){ $('addStatus').textContent='\u7ffb\u8a33\u30a8\u30e9\u30fc\uff1a'+e.message; toast('\u7ffb\u8a33\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='\u7ffb\u8a33\u30fb\u89e3\u8aac\u3092\u3064\u3051\u308b'; }
+};
+$('addSave').onclick=()=>{
+  const en=$('addEn').value.trim();
+  if(!en){toast('\u82f1\u6587\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
+  const title=$('addTitle').value.trim();
+  const season=$('addSeason').value.trim();
+  const episode=$('addEpisode').value.trim();
+  const tSec=parseAddTime($('addTime').value);
+  if(Number.isNaN(tSec)){toast('\u518d\u751f\u6642\u9593\u306f 12:34 \u306e\u5f62\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return}
+  const stamp=tSec?fmtStamp(tSec):'';
+  const context=buildAddContext(title,season,episode,stamp);
+  if(saveManualPhrase(en,$('addJa').value.trim(),context,tSec,title)){
+    $('addEn').value=''; $('addJa').value=''; $('addTime').value='';
+    $('addExplain').style.display='none'; $('addExplain').textContent='';
+    $('addStatus').textContent='\u4fdd\u5b58\u3057\u307e\u3057\u305f\u3002\u300c\u4fdd\u5b58\u3057\u305f\u8868\u73fe\u3092\u898b\u308b\u300d\u304b\u3089\u78ba\u8a8d\u3067\u304d\u307e\u3059\u3002';
+    refreshAddTitles();
+  }
+};
+$('addClear').onclick=()=>{ $('addEn').value=''; $('addJa').value=''; $('addTime').value=''; $('addExplain').style.display='none'; $('addExplain').textContent=''; $('addStatus').textContent='\u5165\u529b\u3092\u30af\u30ea\u30a2\u3057\u307e\u3057\u305f\u3002\u4f5c\u54c1\u540d\u3068\u30b7\u30fc\u30ba\u30f3\u30fb\u30a8\u30d4\u30bd\u30fc\u30c9\u306f\u305d\u306e\u307e\u307e\u3067\u3059\u3002'; };
+$('addGoReview').onclick=()=>page('review');
+$('saveCue').onclick=()=>{
+  if(!selectedCue){toast('\u5148\u306b\u5b57\u5e55\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044');return}
+  savePhrase(selectedCue.text, selectedCue.ja||'', '');
+};
+refreshAddTitles();
+// Netflix-PC / phone phrase sync
+const SYNC_URL_KEY='sf_sync_url', SYNC_TOKEN_KEY='sf_sync_token';
+$('syncUrl').value=localStorage.getItem(SYNC_URL_KEY)||location.origin;
+$('syncToken').value=localStorage.getItem(SYNC_TOKEN_KEY)||'';
+$('saveSync').onclick=()=>{localStorage.setItem(SYNC_URL_KEY,$('syncUrl').value.trim().replace(/\/$/,''));localStorage.setItem(SYNC_TOKEN_KEY,$('syncToken').value.trim());$('syncStatus').textContent='同期設定を保存しました。';toast('同期設定を保存しました')};
+$('syncNow').onclick=async()=>{const base=(localStorage.getItem(SYNC_URL_KEY)||$('syncUrl').value.trim()).replace(/\/$/,'');const token=localStorage.getItem(SYNC_TOKEN_KEY)||$('syncToken').value.trim();if(!base){toast('サーバーURLを入力してください');return}const headers={'Content-Type':'application/json'};if(token)headers['X-SpeakFlow-Token']=token;$('syncNow').disabled=true;$('syncStatus').textContent='同期しています...';try{const local=phrases.map(p=>({...p,source:p.source||'pwa'}));if(local.length){const up=await fetch(base+'/api/phrases',{method:'POST',headers,body:JSON.stringify({phrases:local})});if(!up.ok)throw Error((await up.json()).detail||'アップロードに失敗しました')}const r=await fetch(base+'/api/phrases',{headers});if(!r.ok)throw Error((await r.json()).detail||'ダウンロードに失敗しました');const data=await r.json();const map=new Map(phrases.map(p=>[String(p.id),p]));for(const p of (data.phrases||[])){const old=map.get(String(p.id));if(!old||new Date(p.created||0)>new Date(old.created||0))map.set(String(p.id),p)}phrases=[...map.values()].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));localStorage.setItem(DB,JSON.stringify(phrases));renderSaved();refreshAddTitles();$('syncStatus').textContent=`同期完了：${(data.phrases||[]).length}件をサーバーから確認しました。`;toast('スマホとの同期が完了しました')}catch(e){$('syncStatus').textContent='同期エラー：'+e.message}finally{$('syncNow').disabled=false}};
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('install').hidden=false});$('install').onclick=async()=>{if(deferred){deferred.prompt();deferred=null}};
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>
