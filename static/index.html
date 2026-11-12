@@ -57,6 +57,13 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
  <div class="workspace">
   <div>
    <div class="video" id="player"><div class="placeholder">YouTube URLを入力すると<br>ここに動画が表示されます</div></div>
+   <div class="panel" id="quickPanel">
+    <div class="subhead"><h2>この場面を保存</h2><span class="muted" id="quickTime">--:--</span></div>
+    <input id="quickEn" class="field" placeholder="英文を入力（字幕をタップすると入ります）" style="margin-bottom:8px" autocomplete="off">
+    <div class="row"><input id="quickJa" class="field" placeholder="日本語訳（任意）" autocomplete="off"><button class="btn secondary fit" id="quickTranslate">訳す</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn secondary fit" id="quickFillCue">今の字幕を入れる</button><button class="btn" id="quickSave">＋ 保存</button></div>
+    <p class="hint" id="quickStatus">動画を見ながら、その場で保存できます。スクロールは不要です。</p>
+   </div>
    <div class="panel">
     <div class="subhead"><h2>YouTube字幕の自動取得</h2><span class="muted" id="fileStatus">未読み込み</span></div>
     <div class="row"><button class="btn" id="autoSubs">字幕を自動取得</button><span class="hint" id="autoStatus">公開動画の字幕・自動生成字幕に対応</span></div>
@@ -111,7 +118,7 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
 
 <section id="add" class="page">
  <div class="tag">QUICK ADD &mdash; NETFLIX / MEMO</div><h1>気になる英文をすぐ登録</h1>
- <div class="panel"><p class="muted">Netflixアプリで見た英文を、その場で手入力・音声入力して保存します。作品名は一度入力すれば、次からタップで選べます。</p>
+ <div class="panel"><p class="muted">Netflixアプリで見た英文を、その場で手入力・音声入力して保存します。作品名は一度入力すれば、次からタップで選べます。Netflixの動画はこのアプリ内では再生できません。Netflixアプリで見ながら、ここで登録します。</p>
   <label class="hint">作品名（例：Brooklyn Nine-Nine）</label>
   <input id="addTitle" class="field" list="addTitleList" placeholder="作品名を入力" autocomplete="off" style="margin:5px 0 9px">
   <datalist id="addTitleList"></datalist>
@@ -225,7 +232,7 @@ $('clearSubs').onclick=()=>{subsVid='';lock=null;enCues=[];jaCues=[];merged=[];a
 function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderTranscript(){let q=$('filter').value.toLowerCase();$('transcript').innerHTML='';merged.forEach((c,i)=>{if(q&&!c.text.toLowerCase().includes(q)&&!c.ja.includes(q))return;let d=document.createElement('div');d.className='cue'+(i===active?' active':'');d.innerHTML=`<span class="time">${fmt(c.start)}</span><div class="en">${escapeHTML(c.text)}</div><div class="ja">${escapeHTML(c.ja||'')}</div>`;d.onclick=()=>showCue(i,true);$('transcript').append(d)})}
 function fmt(s){let m=Math.floor(s/60),sec=Math.floor(s%60);return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
-function showCue(i,seek=false){if(!merged.length)return;if(seek)lock=null;let prevCue=selectedCue;active=Math.max(0,Math.min(merged.length-1,i));selectedCue=merged[active];if(prevCue!==selectedCue)$('capBox').classList.remove('revealed');$('nowTime').textContent=fmt(selectedCue.start);$('currentEn').innerHTML=wordHTML(selectedCue.text);$('currentJa').textContent=selectedCue.ja||'日本語字幕なし';$('currentEn').querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>selectWord(b.dataset.word));if(seek&&playerReady)player.seekTo(selectedCue.start,true);renderTranscript();let activeEl=$('transcript').querySelector('.cue.active');if(activeEl)activeEl.scrollIntoView({block:'nearest'})}
+function showCue(i,seek=false){if(!merged.length)return;if(seek)lock=null;let prevCue=selectedCue;active=Math.max(0,Math.min(merged.length-1,i));selectedCue=merged[active];if(prevCue!==selectedCue)$('capBox').classList.remove('revealed');$('nowTime').textContent=fmt(selectedCue.start);$('quickTime').textContent=fmt(selectedCue.start);if(!$('quickEn').value.trim()){$('quickEn').value=selectedCue.text;$('quickJa').value=selectedCue.ja||''}$('currentEn').innerHTML=wordHTML(selectedCue.text);$('currentJa').textContent=selectedCue.ja||'日本語字幕なし';$('currentEn').querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>selectWord(b.dataset.word));if(seek&&playerReady)player.seekTo(selectedCue.start,true);renderTranscript();let activeEl=$('transcript').querySelector('.cue.active');if(activeEl)activeEl.scrollIntoView({block:'nearest'})}
 function wordHTML(t){return t.split(/(\s+)/).map(part=>/^[A-Za-z][A-Za-z'-]*[.,!?;:]?$/.test(part)?`<button class="word" data-word="${escapeHTML(part.replace(/[.,!?;:]$/,''))}">${escapeHTML(part)}</button>`:escapeHTML(part)).join('')}
 const dictCache={};
 function wordCandidates(w){
@@ -263,8 +270,9 @@ function dictHTML(d){
 }
 function selectWord(w){
  selectedText=w;gloss='';say(w,.8);
+ $('quickEn').value=w;
  $('explain').innerHTML=`<h3>${escapeHTML(w)}</h3><p class="muted">字幕: ${escapeHTML(selectedCue?.text||'')}</p><div id="dict"><p class="muted">辞書を引いています…</p></div>`;
- lookup(w).then(d=>{if(selectedText!==w)return;gloss=d.ja||'';let el=$('dict');if(el)el.innerHTML=dictHTML(d)+'<p class="hint">文脈に合った意味は「AIで詳しく解説」で確認できます。</p>'})
+ lookup(w).then(d=>{if(selectedText!==w)return;gloss=d.ja||'';if($('quickEn').value.trim().toLowerCase()===w.toLowerCase()&&!$('quickJa').value.trim())$('quickJa').value=gloss;let el=$('dict');if(el)el.innerHTML=dictHTML(d)+'<p class="hint">文脈に合った意味は「AIで詳しく解説」で確認できます。</p>'})
 }
 $('prev').onclick=()=>showCue(active-1,true);$('next').onclick=()=>showCue(active+1,true);
 $('repeat').onclick=()=>{if(!selectedCue)return;if(playerReady){lock=selectedCue;player.seekTo(selectedCue.start,true);player.playVideo()}else toast('先に動画を読み込んでください')};
@@ -287,7 +295,7 @@ $('loopBtn').onclick=()=>{loopOn=!loopOn;$('loopBtn').textContent='🔁 ルー�
 function setMode(m){viewMode=m;localStorage.setItem('sf_mode',m);let L=$('learn');L.classList.toggle('m-en',m==='en');L.classList.toggle('m-hide',m==='hide');$('capBox').classList.remove('revealed');document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m))}
 document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));setMode(viewMode);
 $('capBox').addEventListener('click',e=>{if(viewMode==='hide'&&!$('capBox').classList.contains('revealed')){e.stopPropagation();e.preventDefault();$('capBox').classList.add('revealed')}},true);
-function savePhrase(en,ja,context){if(!en)return;if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('すでに保存されています');return}phrases.unshift({id:Date.now(),en,ja,context,vid:currentVid,t:selectedCue?selectedCue.start:0,title:currentTitle,created:new Date().toISOString()});localStorage.setItem(DB,JSON.stringify(phrases));toast('フレーズを保存しました')}
+function savePhrase(en,ja,context,tOverride){if(!en)return;if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('すでに保存されています');return}phrases.unshift({id:Date.now(),en,ja,context,vid:currentVid,t:(typeof tOverride==='number'?tOverride:(selectedCue?selectedCue.start:0)),title:currentTitle,created:new Date().toISOString()});localStorage.setItem(DB,JSON.stringify(phrases));toast('フレーズを保存しました')}
 $('saveExpression').onclick=()=>{if(!selectedText){toast('先に字幕内の単語をタップしてください');return}savePhrase(selectedText,gloss,selectedCue?.text||'')};
 $('explainAI').onclick=async()=>{if(!selectedText){toast('先に単語をタップしてください');return}let key=localStorage.getItem('speakflow_gemini_key');if(!key){$('explain').innerHTML+=`<p class="hint">AI解説を使うには、下の設定にGemini APIキーを登録してください。APIキーなしでも基本的な字幕学習は使えます。</p>`;return}let btn=$('explainAI');btn.disabled=true;btn.textContent='解説中...';try{let prompt=`Explain the English expression "${selectedText}" in the context "${selectedCue?.text||''}". Answer in Japanese. Include: meaning in this context, nuance, grammar or word form, one natural everyday example with Japanese translation. Keep it concise and beginner-friendly.`;let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});let j=await r.json();if(!r.ok)throw Error(j.error?.message||'API error');let answer=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'回答を取得できませんでした';let p=document.createElement('p');p.textContent=answer;$('explain').append(p);let save=document.createElement('button');save.className='btn secondary';save.textContent='この表現を保存';save.onclick=()=>savePhrase(selectedText,answer,selectedCue?.text||'');$('explain').append(save)}catch(e){toast('AIエラー: '+e.message)}finally{btn.disabled=false;btn.textContent='AIで詳しく解説'}};
 $('saveKey').onclick=()=>{let k=$('apiKey').value.trim();if(!k){toast('APIキーを入力してください');return}localStorage.setItem('speakflow_gemini_key',k);$('apiKey').value='';$('keyStatus').textContent='APIキーをこの端末に保存しました'};
@@ -296,6 +304,37 @@ function renderSaved(){$('savedList').innerHTML='';if(!phrases.length){$('savedL
 function download(content,name,type){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([content],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 $('export').onclick=()=>download(['English\tJapanese\tContext\tVideo',...phrases.map(p=>[p.en,p.ja,p.context].map(x=>(x||'').replace(/[\t\r\n]+/g,' ')).concat(p.vid?'https://youtu.be/'+p.vid+'?t='+Math.floor(p.t||0):'').join('\t'))].join('\n'),'speakflow-expressions.tsv','text/tab-separated-values');
 $('backup').onclick=()=>download(JSON.stringify(phrases,null,2),'speakflow-phrases.json','application/json');
+// --- Quick save on Learn page (same screen, no scroll) ---
+function quickTimeSec(){if(playerReady&&player.getCurrentTime)return player.getCurrentTime();return selectedCue?selectedCue.start:0}
+$('quickFillCue').onclick=()=>{if(!selectedCue){toast('先に字幕を読み込んでください');return}$('quickEn').value=selectedCue.text;$('quickJa').value=selectedCue.ja||'';$('quickTime').textContent=fmt(selectedCue.start)};
+$('quickTranslate').onclick=async()=>{
+ const en=$('quickEn').value.trim();if(!en){toast('先に英文を入力してください');return}
+ const btn=$('quickTranslate');btn.disabled=true;btn.textContent='訳し中...';
+ try{
+  const key=localStorage.getItem('speakflow_gemini_key');
+  if(key){
+   const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Translate this English sentence into natural Japanese. Reply with only the Japanese translation. English: "'+en.replace(/"/g,"'")+'"'}]}]})});
+   const j=await r.json();if(!r.ok)throw new Error(j.error?.message||'API error');
+   const ans=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim()||'';
+   if(!ans)throw new Error('訳を取得できませんでした');$('quickJa').value=ans;
+  }else{
+   const r=await fetch('https://api.mymemory.translated.net/get?langpair=en|ja&q='+encodeURIComponent(en));
+   const j=await r.json();const ja=j?.responseData?.translatedText||'';
+   if(!ja||/MYMEMORY|INVALID|QUERY LENGTH/i.test(ja))throw new Error('訳を取得できませんでした');
+   $('quickJa').value=ja;
+  }
+  $('quickStatus').textContent='訳を入れました。修正してから保存できます。';
+ }catch(e){$('quickStatus').textContent='翻訳エラー：'+e.message}
+ finally{btn.disabled=false;btn.textContent='訳す'}
+};
+$('quickSave').onclick=()=>{
+ const en=$('quickEn').value.trim();if(!en){toast('英文を入力してください');return}
+ const t=quickTimeSec();
+ const context=currentTitle?('YouTube · '+currentTitle+' · '+fmt(t)):'YouTube · '+fmt(t);
+ const before=phrases.length;
+ savePhrase(en,$('quickJa').value.trim(),context,t);
+ if(phrases.length>before){$('quickEn').value='';$('quickJa').value='';$('quickStatus').textContent='保存しました。保存表現から見返せます。'}
+};
 // --- Quick Add (Netflix / manual, smartphone) ---
 function parseAddTime(s){
   s=(s||'').trim(); if(!s) return 0;
