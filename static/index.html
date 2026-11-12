@@ -68,7 +68,7 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
     <div class="subhead"><h2>YouTube字幕の自動取得</h2><span class="muted" id="fileStatus">未読み込み</span></div>
     <div class="row"><button class="btn" id="autoSubs">字幕を自動取得</button><span class="hint" id="autoStatus">公開動画の字幕・自動生成字幕に対応</span></div>
     <label class="hint" style="display:block;margin-top:6px"><input type="checkbox" id="mergeSub" checked> 自動字幕を文のまとまりにする</label>
-    <p class="hint">字幕が取得できない動画もあります。取得できない場合は、下から字幕ファイルを読み込めます。</p>
+    <p class="hint">字幕が取得できない動画もあります。サーバーで取れない場合は、Cloudflare Worker経由で自動的に試します。それでも取れない場合は、下から字幕ファイルを読み込めます。</p>
     <div class="divider"></div>
     <h3>字幕ファイルから読み込む（予備）</h3>
     <label class="hint">英語字幕（SRT / VTT）</label><input id="enFile" class="field" type="file" accept=".srt,.vtt" style="margin:4px 0 10px">
@@ -152,6 +152,13 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
   <p>YouTube字幕の自動取得にはサーバー側のyt-dlpを利用します。YouTubeの仕様変更、地域制限、年齢制限、ログイン要求、字幕がない動画などでは取得できない場合があります。無料ホスティングでは初回起動に時間がかかることがあります。</p>
   <p>自動取得は同梱のPythonバックエンド（yt-dlp）経由で行います。YouTube側の仕様変更・動画の公開範囲・地域/年齢/ログイン制限などにより、すべての動画で成功する保証はありません。</p>
   <div class="divider"></div>
+  <h2>字幕取得（Cloudflare Worker・予備）</h2>
+  <p>Renderのサーバーで字幕が取れないとき、Cloudflare Worker経由で自動的に試します。WorkerのURLは下で変更できます。未入力の場合は初期設定のWorkerを使います。</p>
+  <label class="hint">Worker URL</label>
+  <input id="workerUrl" class="field" placeholder="https://speakflow-captions.inagaki80808080.workers.dev" style="margin:5px 0 9px">
+  <div class="row"><button class="btn secondary" id="saveWorker">Worker設定を保存</button></div>
+  <p class="hint" id="workerStatus">未設定の場合は初期設定のWorkerを使います。</p>
+  <div class="divider"></div>
   <div class="divider"></div>
   <h2>PC Netflix連携・スマホ同期</h2>
   <p>PCのChrome拡張機能で保存したNetflix字幕を、このSpeakFlowに同期します。PC側と同じSpeakFlowサーバーURL・同期トークンを設定してください。</p>
@@ -209,23 +216,46 @@ function buildMerged(){
 function parseTime(t){let a=t.trim().replace(',','.').split(':').map(Number);return a.length===3?a[0]*3600+a[1]*60+a[2]:a[0]*60+a[1]}
 function parseSrt(raw){let blocks=raw.replace(/^\uFEFF/,'').replace(/\r/g,'').replace(/<br\s*\/?>/gi,' ').split(/\n\s*\n/),out=[];for(let b of blocks){let lines=b.split('\n').map(x=>x.trim()).filter(Boolean),i=lines.findIndex(x=>x.includes('-->'));if(i<0)continue;let m=lines[i].split('-->');let start=parseTime(m[0]),end=parseTime(m[1].trim().split(/\s/)[0]);let text=lines.slice(i+1).join(' ').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"');if(text)out.push({start,end,text})}return out}
 
-$('autoSubs').onclick=async()=>{
- const url=$('url').value.trim();
- if(!ytId(url)){toast('先にYouTube URLを入力してください');return}
- const btn=$('autoSubs');btn.disabled=true;btn.textContent='字幕を取得中...';$('autoStatus').textContent='動画の字幕トラックを確認しています';
- try{
-  const r=await fetch('/api/captions?url='+encodeURIComponent(url)+'&merge='+($('mergeSub').checked?1:0));
-  const data=await r.json();
-  if(!r.ok)throw new Error(data.detail||data.error||'字幕を取得できませんでした');
-  enCues=data.english||[];jaCues=data.japanese||[];subsVid=ytId(url);if(currentVid!==subsVid)loadVideo(subsVid);currentTitle=data.title||'';
+// --- 字幕取得: Renderサーバー -> Cloudflare Worker フォールバック ---
+const WORKER_KEY='sf_worker_url';
+const DEFAULT_WORKER='https://speakflow-captions.inagaki80808080.workers.dev';
+function workerUrl(){return (localStorage.getItem(WORKER_KEY)||'').trim().replace(/\/$/,'')||DEFAULT_WORKER}
+function applyAutoCaptions(data,vid){
+  enCues=data.english||[];jaCues=data.japanese||[];subsVid=vid;if(currentVid!==subsVid)loadVideo(subsVid);currentTitle=data.title||'';
   if(!enCues.length)throw new Error('英語字幕が見つかりませんでした。この動画は字幕非対応の可能性があります。');
   buildMerged();
   active=0;renderTranscript();showCue(0);$('count').textContent=merged.length+'件';
   $('fileStatus').textContent=`自動取得 EN ${enCues.length} / JA ${jaCues.length}`;
   $('autoStatus').textContent=(data.english_source||'字幕')+' / '+(data.japanese_source||'日本語字幕なし');
-  toast('字幕を自動取得しました');
- }catch(e){$('autoStatus').textContent=e.message;toast('取得できませんでした: '+e.message)}
- finally{btn.disabled=false;btn.textContent='字幕を自動取得'}
+}
+$('autoSubs').onclick=async()=>{
+ const url=$('url').value.trim();
+ const vid=ytId(url);
+ if(!vid){toast('先にYouTube URLを入力してください');return}
+ const btn=$('autoSubs');btn.disabled=true;btn.textContent='字幕を取得中...';$('autoStatus').textContent='動画の字幕トラックを確認しています';
+ let ok=false,serverErr=null;
+ try{
+  const r=await fetch('/api/captions?url='+encodeURIComponent(url)+'&merge='+($('mergeSub').checked?1:0));
+  const data=await r.json();
+  if(!r.ok)throw new Error(data.detail||data.error||'字幕を取得できませんでした');
+  applyAutoCaptions(data,vid);ok=true;toast('字幕を自動取得しました');
+ }catch(e){serverErr=e}
+ if(!ok){
+  const w=workerUrl();
+  try{
+   $('autoStatus').textContent='サーバーで取得できなかったため、Cloudflare経由で試しています...';
+   const r2=await fetch(w+'?v='+vid+'&merge='+($('mergeSub').checked?1:0));
+   const data2=await r2.json();
+   if(!r2.ok)throw new Error(data2.error||'Workerでの取得に失敗しました');
+   applyAutoCaptions(data2,vid);
+   $('autoStatus').textContent+='（Cloudflare経由）';
+   toast('字幕を自動取得しました（Cloudflare経由）');
+  }catch(e2){
+   $('autoStatus').textContent='サーバー: '+serverErr.message+' / Cloudflare: '+e2.message;
+   toast('取得できませんでした。もう一度お試しください');
+  }
+ }
+ btn.disabled=false;btn.textContent='字幕を自動取得'
 };
 $('loadSubs').onclick=async()=>{let ef=$('enFile').files[0],jf=$('jaFile').files[0];if(!ef){toast('英語字幕ファイルを選んでください');return}enCues=parseSrt(await ef.text());jaCues=jf?parseSrt(await jf.text()):[];subsVid=currentVid;buildMerged();active=0;renderTranscript();showCue(0);$('fileStatus').textContent=`EN ${enCues.length} / JA ${jaCues.length}`;$('count').textContent=merged.length+'件';toast('字幕を読み込みました')};
 $('clearSubs').onclick=()=>{subsVid='';lock=null;enCues=[];jaCues=[];merged=[];active=-1;$('transcript').innerHTML='';$('currentEn').textContent='字幕を読み込んでください';$('currentJa').textContent='';$('count').textContent='0件'};
@@ -300,6 +330,9 @@ $('saveExpression').onclick=()=>{if(!selectedText){toast('先に字幕内の単�
 $('explainAI').onclick=async()=>{if(!selectedText){toast('先に単語をタップしてください');return}let key=localStorage.getItem('speakflow_gemini_key');if(!key){$('explain').innerHTML+=`<p class="hint">AI解説を使うには、下の設定にGemini APIキーを登録してください。APIキーなしでも基本的な字幕学習は使えます。</p>`;return}let btn=$('explainAI');btn.disabled=true;btn.textContent='解説中...';try{let prompt=`Explain the English expression "${selectedText}" in the context "${selectedCue?.text||''}". Answer in Japanese. Include: meaning in this context, nuance, grammar or word form, one natural everyday example with Japanese translation. Keep it concise and beginner-friendly.`;let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});let j=await r.json();if(!r.ok)throw Error(j.error?.message||'API error');let answer=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'回答を取得できませんでした';let p=document.createElement('p');p.textContent=answer;$('explain').append(p);let save=document.createElement('button');save.className='btn secondary';save.textContent='この表現を保存';save.onclick=()=>savePhrase(selectedText,answer,selectedCue?.text||'');$('explain').append(save)}catch(e){toast('AIエラー: '+e.message)}finally{btn.disabled=false;btn.textContent='AIで詳しく解説'}};
 $('saveKey').onclick=()=>{let k=$('apiKey').value.trim();if(!k){toast('APIキーを入力してください');return}localStorage.setItem('speakflow_gemini_key',k);$('apiKey').value='';$('keyStatus').textContent='APIキーをこの端末に保存しました'};
 $('deleteKey').onclick=()=>{localStorage.removeItem('speakflow_gemini_key');$('keyStatus').textContent='APIキーを削除しました'};
+// Cloudflare Worker 設定
+$('workerUrl').value=localStorage.getItem(WORKER_KEY)||'';
+$('saveWorker').onclick=()=>{localStorage.setItem(WORKER_KEY,$('workerUrl').value.trim());$('workerStatus').textContent='Worker設定を保存しました。';toast('Worker設定を保存しました')};
 function renderSaved(){$('savedList').innerHTML='';if(!phrases.length){$('savedList').innerHTML='<p class="muted">保存した表現はまだありません。</p>';return}phrases.forEach(p=>{let d=document.createElement('div');d.className='listItem';let b=document.createElement('b');b.textContent=p.en;let c=document.createElement('p');c.className='muted';c.textContent=[p.ja&&p.ja.length<40?p.ja:'',p.context||(p.ja&&p.ja.length>=40?p.ja:'')].filter(Boolean).join(' / ');let row=document.createElement('div');row.className='row';let play=document.createElement('button');play.className='btn secondary';play.textContent='🔊 聞く';play.onclick=()=>say(p.en);let del=document.createElement('button');del.className='btn ghost';del.textContent='削除';del.onclick=()=>{phrases=phrases.filter(x=>x.id!==p.id);localStorage.setItem(DB,JSON.stringify(phrases));renderSaved()};if(p.vid){let sc=document.createElement('button');sc.className='btn secondary';sc.textContent='▶ '+fmt(p.t||0)+' の場面';sc.onclick=()=>openScene(p.vid,p.t||0);row.append(sc)}row.append(play,del);if(p.title){let tt=document.createElement('div');tt.className='hint';tt.textContent='🎬 '+p.title;d.append(b,c,tt,row)}else d.append(b,c,row);$('savedList').append(d)})}
 function download(content,name,type){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([content],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 $('export').onclick=()=>download(['English\tJapanese\tContext\tVideo',...phrases.map(p=>[p.en,p.ja,p.context].map(x=>(x||'').replace(/[\t\r\n]+/g,' ')).concat(p.vid?'https://youtu.be/'+p.vid+'?t='+Math.floor(p.t||0):'').join('\t'))].join('\n'),'speakflow-expressions.tsv','text/tab-separated-values');
