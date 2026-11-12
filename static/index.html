@@ -242,17 +242,23 @@ $('autoSubs').onclick=async()=>{
  }catch(e){serverErr=e}
  if(!ok){
   const w=workerUrl();
-  try{
-   $('autoStatus').textContent='サーバーで取得できなかったため、Cloudflare経由で試しています...';
-   const r2=await fetch(w+'?v='+vid+'&merge='+($('mergeSub').checked?1:0));
-   const data2=await r2.json();
-   if(!r2.ok)throw new Error(data2.error||'Workerでの取得に失敗しました');
-   applyAutoCaptions(data2,vid);
-   $('autoStatus').textContent+='（Cloudflare経由）';
-   toast('字幕を自動取得しました（Cloudflare経由）');
-  }catch(e2){
-   $('autoStatus').textContent='サーバー: '+serverErr.message+' / Cloudflare: '+e2.message;
-   toast('取得できませんでした。もう一度お試しください');
+  let wErr=null;
+  // Worker側もYouTubeの応答が不安定なため、失敗時は2秒待って1回だけ自動で再試行する
+  for(let attempt=0;attempt<2&&!ok;attempt++){
+   if(attempt>0){$('autoStatus').textContent='Cloudflareでも取れなかったため、もう一度試しています...';await new Promise(r=>setTimeout(r,2000));}
+   else $('autoStatus').textContent='サーバーで取得できなかったため、Cloudflare経由で試しています...';
+   try{
+    const r2=await fetch(w+'?v='+vid+'&merge='+($('mergeSub').checked?1:0));
+    const data2=await r2.json();
+    if(!r2.ok)throw new Error(data2.error||'Workerでの取得に失敗しました');
+    applyAutoCaptions(data2,vid);ok=true;
+    $('autoStatus').textContent+='（Cloudflare経由）';
+    toast('字幕を自動取得しました（Cloudflare経由）');
+   }catch(e2){wErr=e2}
+  }
+  if(!ok){
+   $('autoStatus').textContent='サーバー: '+serverErr.message+' / Cloudflare: '+wErr.message;
+   toast('取得できませんでした。少し待ってからもう一度お試しください');
   }
  }
  btn.disabled=false;btn.textContent='字幕を自動取得'
