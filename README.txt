@@ -1,3 +1,21 @@
+SpeakFlow English v3.5 - YouTube字幕のCloudflare Workerフォールバック版（v3.4 ベース）
+
+【v3.5の変更（今回）】
+- 「字幕を自動取得」で、Renderのサーバーで取れない場合に Cloudflare Worker
+  経由で自動的に試すようになった。Workerは YouTube の字幕API(youtubei)に
+  Cloudflareの回線から聞きに行き、署名付き字幕URLから字幕本文を取る。
+  json3 / 旧XML / srv3 の3形式に対応し、字幕付きの応答が来るまで最大3回試す。
+- WorkerのURLは「使い方」タブの「字幕取得（Cloudflare Worker・予備）」で
+  変更できる。未入力の場合は初期設定のWorker
+  (https://speakflow-captions.inagaki80808080.workers.dev) を使う。
+- Workerのコードは cloudflare-worker/worker.js に入っている。
+  Cloudflareの無料アカウントで Worker を作り、このコードをデプロイして使う。
+- 注意：Worker経由でも YouTube の応答が不安定なことがある（3回中1回ほど
+  失敗することがあった）。失敗した場合は「字幕を自動取得」をもう一度押すと
+  取れることがある。それでも取れない動画は、SRT/VTT読み込み・手入力を使う。
+- 変更は static/index.html とこの README.txt と cloudflare-worker/worker.js
+  の追加。ほかのファイルは v3.4 と同じ。
+
 SpeakFlow English v3.4 - 学習画面その場で保存版（v3.3.1 ベース）
 
 【v3.4の変更（今回）】
