@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "SpeakFlow Netflix Caption Saver",
+  "version": "0.1.0",
+  "description": "Save the currently displayed Netflix subtitle to SpeakFlow.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://www.netflix.com/*", "https://*.onrender.com/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "action": {"default_popup": "popup.html", "default_title": "SpeakFlow"},
+  "content_scripts": [{
+    "matches": ["https://www.netflix.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}
