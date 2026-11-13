@@ -28,6 +28,13 @@ h1{font-size:24px;margin:4px 0 8px}h2{font-size:17px;margin:0 0 9px}h3{font-size
 .cue .time{font-size:10px;color:var(--muted);display:block}.cue .en{font-size:15px;font-weight:700}.cue .ja{font-size:13px;color:#c0ccdc;margin-top:3px}
 .word{border:0;background:transparent;color:var(--blue);padding:0;text-decoration:underline;text-decoration-color:#526f94;text-underline-offset:3px;font-weight:700}
 .transcript{max-height:440px;overflow:auto}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.msg{padding:9px 10px;border-radius:10px;margin:6px 0;max-width:94%}
+.msg.me{margin-left:auto;background:#1a2d45;border:1px solid #6595d5}
+.msg.ai{background:#101e30}
+.msg .tip{font-size:12px;color:#c0ccdc;margin-top:6px;border-top:1px dashed #2c4258;padding-top:6px}
+.msg .spk{font-size:12px;margin-top:6px}
+.scen{padding:8px 10px;border-radius:999px;border:1px solid #2c4258;background:#101e30;color:#e6edf5;cursor:pointer;font-size:14px}
+.scen.on{border-color:#6595d5;background:#1a2d45}
 .explain{background:#0c1726;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:180px}
 nav{position:fixed;bottom:0;left:0;right:0;background:#0c1625ee;border-top:1px solid var(--line);display:flex;justify-content:center;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);z-index:10}
 nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;border-radius:9px;font-size:12px}nav button.active{background:#203650;color:white}
@@ -146,6 +153,36 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
  <div class="panel"><p class="muted">動画で見つけた表現を、あとで見直したり音声で確認できます。</p><div class="row"><button class="btn secondary" id="export">TSVで出力</button><button class="btn ghost" id="backup">バックアップ</button></div><div id="savedList"></div></div>
 </section>
 
+<section id="chat" class="page">
+ <div class="tag">CONVERSATION PRACTICE</div><h1>英語で話してみる。</h1>
+ <div class="panel" id="chatNoKey" style="display:none">
+  <p class="muted">会話練習にはGemini APIキーが必要です。学習画面の「AI設定」から、無料のキーを登録してください。AI解説と同じキーを使います。</p>
+  <div class="row"><button class="btn" id="chatGoSettings">学習画面の「AI設定」を開く</button></div>
+ </div>
+ <div class="panel" id="chatSetup">
+  <label class="hint">場面を選んでください</label>
+  <div id="chatScenarios" class="row" style="flex-wrap:wrap;margin:6px 0 9px"></div>
+  <label class="hint">自由な話題（任意・例：好きな映画について話したい）</label>
+  <input id="chatTopic" class="field" placeholder="話題を入力（空欄でもOK）" autocomplete="off" style="margin:5px 0 9px">
+  <div class="row"><button class="btn" id="chatStart">会話をはじめる</button></div>
+  <p class="hint">Gemini（無料枠）が相手役になります。英語で返事してください。スマホのキーボードのマイクボタンで音声入力もできます。会話の記録はこの画面を離れると消えます。</p>
+  <div class="row" style="margin-top:6px"><span class="hint">使ってみる表現：</span><button class="btn ghost fit" id="chatSuggest">--</button><button class="btn ghost fit" id="chatSuggestNext">↻ 変える</button></div>
+ </div>
+ <div class="panel" id="chatMain" style="display:none">
+  <div class="subhead"><h2 id="chatTitle">会話中</h2><span class="muted" id="chatTurns">0往復</span></div>
+  <div id="chatLog" class="transcript" style="max-height:380px"></div>
+  <div class="row" style="margin-top:8px"><input id="chatInput" class="field" placeholder="英語で返事してみてください" autocomplete="off"><button class="btn fit" id="chatSend">送る</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn secondary fit" id="chatEnd">会話を終える</button><button class="btn ghost fit" id="chatNew">新しい会話</button></div>
+  <p class="hint" id="chatStatus">英語で返事してみてください</p>
+ </div>
+ <div class="panel" id="chatSummary" style="display:none">
+  <div class="subhead"><h2>会話のふりかえり</h2></div>
+  <div id="chatSummaryBody"></div>
+  <div id="chatSummaryExprs"></div>
+  <div class="row" style="margin-top:8px"><button class="btn fit" id="chatAgain">もう一度話す</button></div>
+ </div>
+</section>
+
 <section id="settings" class="page">
  <div class="tag">HOW IT WORKS</div><h1>使い方と制限</h1>
  <div class="panel">
@@ -176,14 +213,14 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
  </div>
 </section>
 </div>
-<nav><button class="active" data-page="learn">▶ 学習</button><button data-page="add">＋ 登録</button><button data-page="review">♡ 保存表現</button><button data-page="settings">⚙ 使い方</button></nav>
+<nav><button class="active" data-page="learn">▶ 学習</button><button data-page="add">＋ 登録</button><button data-page="review">♡ 保存表現</button><button data-page="chat">💬 会話</button><button data-page="settings">⚙ 使い方</button></nav>
 <div class="toast" id="toast"></div>
 <script>
 const $=id=>document.getElementById(id);
 const DB='speakflow_v2_phrases';
 let phrases=JSON.parse(localStorage.getItem(DB)||'[]'),enCues=[],jaCues=[],merged=[],active=-1,selectedText='',selectedCue=null,player=null,playerReady=false,deferred=null,currentVid='',currentTitle='',subsVid='',lock=null,loopOn=false,gloss='',rate=+(localStorage.getItem('sf_rate')||1),viewMode=localStorage.getItem('sf_mode')||'both';
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2200)}
-function page(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='review')renderSaved();if(id==='add')refreshAddTitles()}
+function page(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='review')renderSaved();if(id==='add')refreshAddTitles();if(id==='chat')chatShowSetup()}
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));
 function ytId(raw){try{let u=new URL(raw);if(u.hostname==='youtu.be')return u.pathname.slice(1);if(u.hostname.endsWith('youtube.com'))return u.searchParams.get('v')||u.pathname.split('/').filter(Boolean).pop()}catch{}return ''}
 function loadVideo(id,start=0,autoplay=false){
@@ -470,6 +507,123 @@ $('syncUrl').value=localStorage.getItem(SYNC_URL_KEY)||location.origin;
 $('syncToken').value=localStorage.getItem(SYNC_TOKEN_KEY)||'';
 $('saveSync').onclick=()=>{localStorage.setItem(SYNC_URL_KEY,$('syncUrl').value.trim().replace(/\/$/,''));localStorage.setItem(SYNC_TOKEN_KEY,$('syncToken').value.trim());$('syncStatus').textContent='同期設定を保存しました。';toast('同期設定を保存しました')};
 $('syncNow').onclick=async()=>{const base=(localStorage.getItem(SYNC_URL_KEY)||$('syncUrl').value.trim()).replace(/\/$/,'');const token=localStorage.getItem(SYNC_TOKEN_KEY)||$('syncToken').value.trim();if(!base){toast('サーバーURLを入力してください');return}const headers={'Content-Type':'application/json'};if(token)headers['X-SpeakFlow-Token']=token;$('syncNow').disabled=true;$('syncStatus').textContent='同期しています...';try{const local=phrases.map(p=>({...p,source:p.source||'pwa'}));if(local.length){const up=await fetch(base+'/api/phrases',{method:'POST',headers,body:JSON.stringify({phrases:local})});if(!up.ok)throw Error((await up.json()).detail||'アップロードに失敗しました')}const r=await fetch(base+'/api/phrases',{headers});if(!r.ok)throw Error((await r.json()).detail||'ダウンロードに失敗しました');const data=await r.json();const map=new Map(phrases.map(p=>[String(p.id),p]));for(const p of (data.phrases||[])){const old=map.get(String(p.id));if(!old||new Date(p.created||0)>new Date(old.created||0))map.set(String(p.id),p)}phrases=[...map.values()].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));localStorage.setItem(DB,JSON.stringify(phrases));renderSaved();refreshAddTitles();$('syncStatus').textContent=`同期完了：${(data.phrases||[]).length}件をサーバーから確認しました。`;toast('スマホとの同期が完了しました')}catch(e){$('syncStatus').textContent='同期エラー：'+e.message}finally{$('syncNow').disabled=false}};
+// --- 会話練習 (Gemini) ---
+const CHAT_SCEN=[
+ {id:'cafe',label:'☕ カフェで注文',role:'a café barista',scene:'カフェで注文する',open:'Hi! Welcome to our café. What can I get for you today?'},
+ {id:'weekend',label:'🗓️ 週末の予定',role:'a friend',scene:'友達と週末の予定を話す',open:'Hey! What are you doing this weekend?'},
+ {id:'hotel',label:'🏨 ホテルでチェックイン',role:'a hotel receptionist',scene:'ホテルでチェックインする',open:'Good afternoon! Welcome to our hotel. Do you have a reservation?'},
+ {id:'shop',label:'🛒 買い物',role:'a shop assistant',scene:'お店で買い物をする',open:'Hi there! Can I help you find anything today?'},
+ {id:'movie',label:'🎬 好きな映画・ドラマ',role:'a friend',scene:'好きな映画やドラマについて話す',open:'Have you watched anything good lately?'},
+ {id:'smalltalk',label:'💬 雑談',role:'a friend',scene:'友達と雑談する',open:'Hi! How is your day going?'}
+];
+let chatScen=null,chatTopic='',chatHist=[],chatTurns=0,chatBusy=false,chatSuggIdx=0;
+function chatHasKey(){return !!localStorage.getItem('speakflow_gemini_key')}
+async function geminiText(prompt){
+ let key=localStorage.getItem('speakflow_gemini_key');
+ if(!key)throw new Error('Gemini APIキーが登録されていません');
+ let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+ let j=await r.json();
+ if(!r.ok)throw new Error(j.error?.message||'API error');
+ return (j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'').trim();
+}
+function chatShowSetup(){
+ $('chatNoKey').style.display=chatHasKey()?'none':'block';
+ $('chatSetup').style.display=chatHasKey()?'block':'none';
+ $('chatMain').style.display='none';$('chatSummary').style.display='none';
+ renderChatScen();chatSuggestNext();
+}
+function renderChatScen(){
+ let box=$('chatScenarios');box.innerHTML='';
+ CHAT_SCEN.forEach(s=>{let b=document.createElement('button');b.className='scen'+(chatScen&&chatScen.id===s.id?' on':'');b.textContent=s.label;b.onclick=()=>{chatScen=s;renderChatScen()};box.append(b)});
+}
+function chatSuggestNext(){
+ let btn=$('chatSuggest');
+ if(!phrases.length){btn.textContent='保存した表現がまだありません';return}
+ chatSuggIdx=(chatSuggIdx+1)%phrases.length;
+ btn.textContent='「'+phrases[chatSuggIdx].en+'」';
+}
+function chatAddMsg(who,text,tip){
+ let d=document.createElement('div');d.className='msg '+(who==='me'?'me':'ai');
+ let t=document.createElement('div');t.textContent=text;d.append(t);
+ if(tip){let tp=document.createElement('div');tp.className='tip';tp.textContent='💡 '+tip;d.append(tp)}
+ if(who==='ai'){let s=document.createElement('button');s.className='btn ghost spk';s.textContent='🔊 聞く';s.onclick=()=>say(text);d.append(s)}
+ $('chatLog').append(d);$('chatLog').scrollTop=$('chatLog').scrollHeight;
+}
+function parseChatReply(raw){
+ let m=raw.match(/REPLY:\s*([\s\S]*?)(?:\nTIP:|$)/);
+ let tip=raw.match(/TIP:\s*([\s\S]*)/);
+ let reply=m?m[1].trim():raw.trim();
+ return {reply,tip:tip?tip[1].trim():''};
+}
+function chatHistText(){
+ return chatHist.slice(-12).map(h=>(h.who==='me'?'User: ':'You: ')+h.text).join('\n');
+}
+async function chatAsk(prompt){
+ $('chatSend').disabled=true;$('chatInput').disabled=true;$('chatStatus').textContent='考え中...';
+ try{return await geminiText(prompt)}
+ catch(e){$('chatStatus').textContent='エラー：'+e.message;toast('AIエラー: '+e.message);throw e}
+ finally{$('chatSend').disabled=false;$('chatInput').disabled=false;$('chatInput').focus()}
+}
+function saveChatPhrase(en,ja,scenario){
+ if(!en)return;
+ if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('すでに保存されています');return}
+ phrases.unshift({id:Date.now(),en,ja,context:'会話練習 · '+scenario,vid:'',t:0,title:scenario,created:new Date().toISOString()});
+ localStorage.setItem(DB,JSON.stringify(phrases));toast('フレーズを保存しました');
+}
+$('chatStart').onclick=()=>{
+ if(!chatScen){toast('場面を選んでください');return}
+ if(!chatHasKey()){toast('Gemini APIキーを登録してください');return}
+ chatTopic=$('chatTopic').value.trim();
+ chatHist=[];chatTurns=0;
+ $('chatTitle').textContent='会話中：'+chatScen.label+(chatTopic?'「'+chatTopic+'」':'');
+ $('chatLog').innerHTML='';$('chatTurns').textContent='0往復';
+ $('chatSetup').style.display='none';$('chatNoKey').style.display='none';$('chatMain').style.display='block';$('chatSummary').style.display='none';
+ chatHist.push({who:'ai',text:chatScen.open});
+ chatAddMsg('ai',chatScen.open,'');
+ $('chatStatus').textContent='英語で返事してみてください';
+ $('chatInput').focus();
+};
+$('chatSend').onclick=async()=>{
+ let text=$('chatInput').value.trim();
+ if(!text||chatBusy)return;
+ chatBusy=true;$('chatInput').value='';
+ chatHist.push({who:'me',text});
+ chatAddMsg('me',text,'');
+ let s=chatScen;
+ let prompt='You are roleplaying as '+s.role+' in this scenario: '+s.scene+(chatTopic?'. The user wants to talk about: '+chatTopic:'')+'. The user is a beginner English learner from Japan. Reply in natural, simple everyday English (1-3 sentences), staying in character. Then add one short tip in Japanese.\nReply in exactly this format:\nREPLY: <your English reply>\nTIP: <one short tip in Japanese: if the user\'s English has a mistake, correct it briefly; otherwise suggest a more natural alternative expression>\nConversation so far:\n'+chatHistText()+'\nUser: '+text;
+ try{
+  let raw=await chatAsk(prompt);
+  let p=parseChatReply(raw);
+  chatHist.push({who:'ai',text:p.reply});
+  chatTurns++;$('chatTurns').textContent=chatTurns+'往復';
+  chatAddMsg('ai',p.reply,p.tip);
+  $('chatStatus').textContent='英語で返事してみてください';
+ }catch(e){}
+ chatBusy=false;
+};
+$('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('chatSend').click()});
+$('chatEnd').onclick=async()=>{
+ if(!chatHist.length){toast('まだ会話がありません');return}
+ $('chatStatus').textContent='ふりかえりを作っています...';
+ let prompt='Summarize this English conversation practice for a beginner Japanese learner. Reply in Japanese. Include: 1) 良かった点 (1-2 sentences), 2) 次に気をつける点 (1 sentence), 3) three useful expressions from the conversation, each on its own line in exactly this format: EXPR: <English> | <Japanese>\nConversation:\n'+chatHistText();
+ try{
+  let raw=await chatAsk(prompt);
+  let exprs=[];let body=raw.split('\n').filter(l=>{let m=l.match(/^EXPR:\s*(.+?)\s*\|\s*(.+)$/);if(m){exprs.push({en:m[1].trim(),ja:m[2].trim()});return false}return true}).join('\n');
+  let bd=document.createElement('div');bd.style.whiteSpace='pre-wrap';bd.textContent=body;$('chatSummaryBody').innerHTML='';$('chatSummaryBody').append(bd);
+  let ex=$('chatSummaryExprs');ex.innerHTML='';
+  exprs.forEach(x=>{let row=document.createElement('div');row.className='row';row.style.marginTop='6px';let t=document.createElement('div');t.style.flex='1';t.innerHTML='<b>'+escapeHTML(x.en)+'</b><br><span class="muted">'+escapeHTML(x.ja)+'</span>';let b=document.createElement('button');b.className='btn secondary';b.textContent='保存';b.onclick=()=>saveChatPhrase(x.en,x.ja,chatScen?chatScen.label:'会話練習');row.append(t,b);ex.append(row)});
+  $('chatMain').style.display='none';$('chatSummary').style.display='block';
+  $('chatStatus').textContent='';
+ }catch(e){}
+};
+$('chatNew').onclick=()=>{chatHist=[];chatTurns=0;$('chatInput').value='';chatShowSetup()};
+$('chatAgain').onclick=()=>{chatHist=[];chatTurns=0;$('chatInput').value='';chatShowSetup()};
+$('chatGoSettings').onclick=()=>page('learn');
+$('chatSuggest').onclick=()=>{
+ if(!phrases.length){toast('保存した表現がまだありません');return}
+ $('chatInput').value=phrases[chatSuggIdx].en;$('chatInput').focus();
+};
+$('chatSuggestNext').onclick=()=>chatSuggestNext();
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('install').hidden=false});$('install').onclick=async()=>{if(deferred){deferred.prompt();deferred=null}};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
