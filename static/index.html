@@ -33,8 +33,6 @@ h1{font-size:24px;margin:4px 0 8px}h2{font-size:17px;margin:0 0 9px}h3{font-size
 .msg.ai{background:#101e30}
 .msg .tip{font-size:12px;color:#c0ccdc;margin-top:6px;border-top:1px dashed #2c4258;padding-top:6px}
 .msg .spk{font-size:12px;margin-top:6px}
-.scen{padding:8px 10px;border-radius:999px;border:1px solid #2c4258;background:#101e30;color:#e6edf5;cursor:pointer;font-size:14px}
-.scen.on{border-color:#6595d5;background:#1a2d45}
 .explain{background:#0c1726;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:180px}
 nav{position:fixed;bottom:0;left:0;right:0;background:#0c1625ee;border-top:1px solid var(--line);display:flex;justify-content:center;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);z-index:10}
 nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;border-radius:9px;font-size:12px}nav button.active{background:#203650;color:white}
@@ -154,32 +152,29 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
 </section>
 
 <section id="chat" class="page">
- <div class="tag">CONVERSATION PRACTICE</div><h1>英語で話してみる。</h1>
+ <div class="tag">INSTANT ENGLISH COMPOSITION</div><h1>瞬間英作文ドリル</h1>
  <div class="panel" id="chatNoKey" style="display:none">
-  <p class="muted">会話練習にはGemini APIキーが必要です。学習画面の「AI設定」から、無料のキーを登録してください。AI解説と同じキーを使います。</p>
+  <p class="muted">瞬間英作文ドリルにはGemini APIキーが必要です。学習画面の「AI設定」から、無料のキーを登録してください。AI解説と同じキーを使います。</p>
   <div class="row"><button class="btn" id="chatGoSettings">学習画面の「AI設定」を開く</button></div>
  </div>
  <div class="panel" id="chatSetup">
-  <label class="hint">場面を選んでください</label>
-  <div id="chatScenarios" class="row" style="flex-wrap:wrap;margin:6px 0 9px"></div>
-  <label class="hint">自由な話題（任意・例：好きな映画について話したい）</label>
-  <input id="chatTopic" class="field" placeholder="話題を入力（空欄でもOK）" autocomplete="off" style="margin:5px 0 9px">
-  <div class="row"><button class="btn" id="chatStart">会話をはじめる</button></div>
-  <p class="hint">Gemini（無料枠）が相手役になります。英語で返事してください。スマホのキーボードのマイクボタンで音声入力もできます。会話の記録はこの画面を離れると消えます。</p>
-  <div class="row" style="margin-top:6px"><span class="hint">使ってみる表現：</span><button class="btn ghost fit" id="chatSuggest">--</button><button class="btn ghost fit" id="chatSuggestNext">↻ 変える</button></div>
+  <p class="muted">日本語を見て、すぐに英語で言ってみましょう。1文ずつ出題します。答えるまで英語は表示されません。</p>
+  <div class="row"><span class="hint" id="chatLevelLabel">レベル：中学基礎</span><span class="hint" id="chatStatsLabel">0問・正答率 --%</span></div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="chatStart">ドリルをはじめる</button></div>
+  <p class="hint">Gemini（無料枠）が問題と採点をします。10問ごとに苦手なところを分析して、復習問題を出します。</p>
  </div>
  <div class="panel" id="chatMain" style="display:none">
-  <div class="subhead"><h2 id="chatTitle">会話中</h2><span class="muted" id="chatTurns">0往復</span></div>
-  <div id="chatLog" class="transcript" style="max-height:380px"></div>
-  <div class="row" style="margin-top:8px"><input id="chatInput" class="field" placeholder="英語で返事してみてください" autocomplete="off"><button class="btn fit" id="chatSend">送る</button></div>
-  <div class="row" style="margin-top:8px"><button class="btn secondary fit" id="chatEnd">会話を終える</button><button class="btn ghost fit" id="chatNew">新しい会話</button></div>
-  <p class="hint" id="chatStatus">英語で返事してみてください</p>
+  <div class="subhead"><h2 id="chatTitle">第1問</h2><span class="muted" id="chatTurns">レベル：中学基礎</span></div>
+  <div id="chatQ" style="font-size:20px;font-weight:750;margin:6px 0 10px">--</div>
+  <div class="row"><input id="chatInput" class="field" placeholder="英語で答えてください" autocomplete="off"><button class="btn fit" id="chatSend">答える</button></div>
+  <div id="chatFeedback" style="margin-top:10px"></div>
+  <div class="row" style="margin-top:8px"><button class="btn fit" id="chatNext" style="display:none">次の問題へ →</button><button class="btn ghost fit" id="chatNew">やめる</button></div>
+  <p class="hint" id="chatStatus"></p>
  </div>
- <div class="panel" id="chatSummary" style="display:none">
-  <div class="subhead"><h2>会話のふりかえり</h2></div>
-  <div id="chatSummaryBody"></div>
-  <div id="chatSummaryExprs"></div>
-  <div class="row" style="margin-top:8px"><button class="btn fit" id="chatAgain">もう一度話す</button></div>
+ <div class="panel" id="chatAnalysis" style="display:none">
+  <div class="subhead"><h2>10問のふりかえり</h2></div>
+  <div id="chatAnalysisBody" style="white-space:pre-wrap"></div>
+  <div class="row" style="margin-top:8px"><button class="btn fit" id="chatResume">復習問題に進む</button></div>
  </div>
 </section>
 
@@ -213,7 +208,7 @@ nav button{background:transparent;border:0;color:var(--muted);padding:8px 12px;b
  </div>
 </section>
 </div>
-<nav><button class="active" data-page="learn">▶ 学習</button><button data-page="add">＋ 登録</button><button data-page="review">♡ 保存表現</button><button data-page="chat">💬 会話</button><button data-page="settings">⚙ 使い方</button></nav>
+<nav><button class="active" data-page="learn">▶ 学習</button><button data-page="add">＋ 登録</button><button data-page="review">♡ 保存表現</button><button data-page="chat">💬 英作文</button><button data-page="settings">⚙ 使い方</button></nav>
 <div class="toast" id="toast"></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -507,123 +502,204 @@ $('syncUrl').value=localStorage.getItem(SYNC_URL_KEY)||location.origin;
 $('syncToken').value=localStorage.getItem(SYNC_TOKEN_KEY)||'';
 $('saveSync').onclick=()=>{localStorage.setItem(SYNC_URL_KEY,$('syncUrl').value.trim().replace(/\/$/,''));localStorage.setItem(SYNC_TOKEN_KEY,$('syncToken').value.trim());$('syncStatus').textContent='同期設定を保存しました。';toast('同期設定を保存しました')};
 $('syncNow').onclick=async()=>{const base=(localStorage.getItem(SYNC_URL_KEY)||$('syncUrl').value.trim()).replace(/\/$/,'');const token=localStorage.getItem(SYNC_TOKEN_KEY)||$('syncToken').value.trim();if(!base){toast('サーバーURLを入力してください');return}const headers={'Content-Type':'application/json'};if(token)headers['X-SpeakFlow-Token']=token;$('syncNow').disabled=true;$('syncStatus').textContent='同期しています...';try{const local=phrases.map(p=>({...p,source:p.source||'pwa'}));if(local.length){const up=await fetch(base+'/api/phrases',{method:'POST',headers,body:JSON.stringify({phrases:local})});if(!up.ok)throw Error((await up.json()).detail||'アップロードに失敗しました')}const r=await fetch(base+'/api/phrases',{headers});if(!r.ok)throw Error((await r.json()).detail||'ダウンロードに失敗しました');const data=await r.json();const map=new Map(phrases.map(p=>[String(p.id),p]));for(const p of (data.phrases||[])){const old=map.get(String(p.id));if(!old||new Date(p.created||0)>new Date(old.created||0))map.set(String(p.id),p)}phrases=[...map.values()].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));localStorage.setItem(DB,JSON.stringify(phrases));renderSaved();refreshAddTitles();$('syncStatus').textContent=`同期完了：${(data.phrases||[]).length}件をサーバーから確認しました。`;toast('スマホとの同期が完了しました')}catch(e){$('syncStatus').textContent='同期エラー：'+e.message}finally{$('syncNow').disabled=false}};
-// --- 会話練習 (Gemini) ---
-const CHAT_SCEN=[
- {id:'cafe',label:'☕ カフェで注文',role:'a café barista',scene:'カフェで注文する',open:'Hi! Welcome to our café. What can I get for you today?'},
- {id:'weekend',label:'🗓️ 週末の予定',role:'a friend',scene:'友達と週末の予定を話す',open:'Hey! What are you doing this weekend?'},
- {id:'hotel',label:'🏨 ホテルでチェックイン',role:'a hotel receptionist',scene:'ホテルでチェックインする',open:'Good afternoon! Welcome to our hotel. Do you have a reservation?'},
- {id:'shop',label:'🛒 買い物',role:'a shop assistant',scene:'お店で買い物をする',open:'Hi there! Can I help you find anything today?'},
- {id:'movie',label:'🎬 好きな映画・ドラマ',role:'a friend',scene:'好きな映画やドラマについて話す',open:'Have you watched anything good lately?'},
- {id:'smalltalk',label:'💬 雑談',role:'a friend',scene:'友達と雑談する',open:'Hi! How is your day going?'}
+// --- 瞬間英作文ドリル (Gemini) ---
+const DRILL_LEVELS=[
+{id:1,label:'中学基礎',desc:'中学1〜2年レベルの短い文。be動詞・一般動詞・過去形など。'},
+{id:2,label:'中学応用',desc:'中学3年レベル。受動態・現在完了・不定詞・関係代名詞など。'},
+{id:3,label:'日常会話',desc:'日常会話でよく使う自然な表現。丁寧な言い方・提案・依頼など。'},
+{id:4,label:'応用',desc:'やや長めの文や、ニュアンスの違いが出る表現。'}
 ];
-let chatScen=null,chatTopic='',chatHist=[],chatTurns=0,chatBusy=false,chatSuggIdx=0;
-function chatHasKey(){return !!localStorage.getItem('speakflow_gemini_key')}
+const DRILL_FALLBACK=[
+{jp:'今日は暑いですね。',en:"It's hot today, isn't it?",pattern:'be動詞・付加疑問文'},
+{jp:'手伝ってくれてありがとう。',en:'Thank you for helping me.',pattern:'感謝の表現'},
+{jp:'明日は雨が降るでしょう。',en:'It will rain tomorrow.',pattern:'未来形'},
+{jp:'この本は面白いです。',en:'This book is interesting.',pattern:'be動詞・形容詞'},
+{jp:'電車に乗り遅れました。',en:'I missed the train.',pattern:'過去形'},
+{jp:'もう一度言ってください。',en:'Please say that again.',pattern:'命令文・依頼'},
+{jp:'私は毎朝ジョギングをします。',en:'I go jogging every morning.',pattern:'現在形・習慣'},
+{jp:'彼は昨日学校に来ませんでした。',en:"He didn't come to school yesterday.",pattern:'過去形・否定'},
+{jp:'この料理はとてもおいしいです。',en:'This dish is really delicious.',pattern:'be動詞・副詞'},
+{jp:'明日一緒に映画を見に行きませんか。',en:'Would you like to watch a movie with me tomorrow?',pattern:'誘いの表現'}
+];
+let drillStats={asked:0,correct:0,sum:0,level:1,focus:'',streakGood:0,streakBad:0};
+try{let s=JSON.parse(localStorage.getItem('sf_drill_stats')||'null');if(s)drillStats=Object.assign(drillStats,s)}catch(e){}
+let drillQ=null,drillBusy=false,drillLastAnswer='',drillRecent=[],drillPatterns=[];
+function drillSaveStats(){localStorage.setItem('sf_drill_stats',JSON.stringify(drillStats))}
+function drillLevel(){return DRILL_LEVELS[Math.max(0,Math.min(DRILL_LEVELS.length-1,drillStats.level-1))]}
+function chatHasKey(){return!!localStorage.getItem('speakflow_gemini_key')}
 async function geminiText(prompt){
- let key=localStorage.getItem('speakflow_gemini_key');
- if(!key)throw new Error('Gemini APIキーが登録されていません');
- let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
- let j=await r.json();
- if(!r.ok)throw new Error(j.error?.message||'API error');
- return (j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'').trim();
+let key=localStorage.getItem('speakflow_gemini_key');
+if(!key)throw new Error('Gemini APIキーが登録されていません');
+let r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+let j=await r.json();
+if(!r.ok)throw new Error(j.error?.message||'API error');
+return (j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'').trim();
 }
 function chatShowSetup(){
- $('chatNoKey').style.display=chatHasKey()?'none':'block';
- $('chatSetup').style.display=chatHasKey()?'block':'none';
- $('chatMain').style.display='none';$('chatSummary').style.display='none';
- renderChatScen();chatSuggestNext();
+$('chatNoKey').style.display=chatHasKey()?'none':'block';
+$('chatSetup').style.display=chatHasKey()?'block':'none';
+$('chatMain').style.display='none';$('chatAnalysis').style.display='none';
+let lv=drillLevel();
+$('chatLevelLabel').textContent='レベル：'+lv.label;
+$('chatStatsLabel').textContent=drillStats.asked?drillStats.asked+'問・正答率 '+Math.round(drillStats.correct/drillStats.asked*100)+'%':'0問・正答率 --%';
 }
-function renderChatScen(){
- let box=$('chatScenarios');box.innerHTML='';
- CHAT_SCEN.forEach(s=>{let b=document.createElement('button');b.className='scen'+(chatScen&&chatScen.id===s.id?' on':'');b.textContent=s.label;b.onclick=()=>{chatScen=s;renderChatScen()};box.append(b)});
+function parseDrillQ(raw){
+let q=(raw.match(/Q:\s*(.+)/)||[])[1];
+let a=(raw.match(/A:\s*(.+)/)||[])[1];
+let p=(raw.match(/PATTERN:\s*(.+)/)||[])[1];
+if(!q){
+let lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+q=lines.find(l=>/[\u3040-\u30FF\u4E00-\u9FFF]/.test(l)&&!/[a-zA-Z]/.test(l));
 }
-function chatSuggestNext(){
- let btn=$('chatSuggest');
- if(!phrases.length){btn.textContent='保存した表現がまだありません';return}
- chatSuggIdx=(chatSuggIdx+1)%phrases.length;
- btn.textContent='「'+phrases[chatSuggIdx].en+'」';
+if(!q)return null;
+return {jp:q.trim(),en:(a||'').trim(),pattern:(p||'').trim()};
 }
-function chatAddMsg(who,text,tip){
- let d=document.createElement('div');d.className='msg '+(who==='me'?'me':'ai');
- let t=document.createElement('div');t.textContent=text;d.append(t);
- if(tip){let tp=document.createElement('div');tp.className='tip';tp.textContent='💡 '+tip;d.append(tp)}
- if(who==='ai'){let s=document.createElement('button');s.className='btn ghost spk';s.textContent='🔊 聞く';s.onclick=()=>say(text);d.append(s)}
- $('chatLog').append(d);$('chatLog').scrollTop=$('chatLog').scrollHeight;
+async function fetchDrillQ(){
+let lv=drillLevel();
+for(let attempt=0;attempt<2;attempt++){
+let prompt='You are an English coach for a Japanese beginner. Generate ONE Japanese sentence for instant English composition practice.\nLevel: '+lv.label+' ('+lv.desc+')\nRules:\n- Everyday expressions used in daily conversation.\n- The English model answer must be 15 words or fewer.\n- Do NOT use the same sentence pattern as these recent ones: '+(drillPatterns.slice(-5).join(', ')||'none yet')+'\n'+(drillStats.focus?'- Focus on this weak area: '+drillStats.focus+'\n':'')+(attempt>0?'- The previous attempt was invalid. Make sure the English model answer is 15 words or fewer.\n':'')+'Reply in exactly this format:\nQ: <Japanese sentence>\nA: <English model answer, 15 words or fewer>\nPATTERN: <short pattern name in English, e.g. past tense question>';
+try{
+let raw=await geminiText(prompt);
+let q=parseDrillQ(raw);
+if(q&&q.jp){
+if(!q.en||q.en.split(/\s+/).length<=18)return q;
 }
-function parseChatReply(raw){
- let m=raw.match(/REPLY:\s*([\s\S]*?)(?:\nTIP:|$)/);
- let tip=raw.match(/TIP:\s*([\s\S]*)/);
- let reply=m?m[1].trim():raw.trim();
- return {reply,tip:tip?tip[1].trim():''};
+}catch(e){if(attempt===1)throw e}
 }
-function chatHistText(){
- return chatHist.slice(-12).map(h=>(h.who==='me'?'User: ':'You: ')+h.text).join('\n');
+return DRILL_FALLBACK[Math.floor(Math.random()*DRILL_FALLBACK.length)];
 }
-async function chatAsk(prompt){
- $('chatSend').disabled=true;$('chatInput').disabled=true;$('chatStatus').textContent='考え中...';
- try{return await geminiText(prompt)}
- catch(e){$('chatStatus').textContent='エラー：'+e.message;toast('AIエラー: '+e.message);throw e}
- finally{$('chatSend').disabled=false;$('chatInput').disabled=false;$('chatInput').focus()}
+function showDrillQ(q){
+drillQ=q;
+$('chatTitle').textContent='第'+(drillStats.asked+1)+'問';
+$('chatTurns').textContent='レベル：'+drillLevel().label;
+$('chatQ').textContent=q.jp;
+$('chatFeedback').innerHTML='';
+$('chatNext').style.display='none';
+$('chatInput').value='';$('chatInput').disabled=false;$('chatSend').disabled=false;
+$('chatStatus').textContent='英語で答えてください';
+$('chatInput').focus();
 }
-function saveChatPhrase(en,ja,scenario){
- if(!en)return;
- if(phrases.some(p=>p.en.toLowerCase()===en.toLowerCase())){toast('すでに保存されています');return}
- phrases.unshift({id:Date.now(),en,ja,context:'会話練習 · '+scenario,vid:'',t:0,title:scenario,created:new Date().toISOString()});
- localStorage.setItem(DB,JSON.stringify(phrases));toast('フレーズを保存しました');
+async function nextDrillQ(){
+$('chatStatus').textContent='次の問題を作っています...';
+$('chatInput').disabled=true;$('chatSend').disabled=true;
+try{
+let q=await fetchDrillQ();
+if(q.pattern)drillPatterns.push(q.pattern);
+showDrillQ(q);
+}catch(e){
+$('chatStatus').textContent='エラー：'+e.message+'。もう一度お試しください。';
+toast('AIエラー: '+e.message);
+$('chatInput').disabled=false;$('chatSend').disabled=false;
+}
+}
+function parseFeedback(raw){
+let get=k=>{let m=raw.match(new RegExp(k+':\\s*([\\s\\S]*?)(?=\\n(?:SCORE|GOOD|FIX|NATURAL|NATIVE|POINT):|$)'));return m?m[1].trim():''};
+let score=parseInt((raw.match(/SCORE:\s*(\d+)/)||[])[1]||'',10);
+return {score:isNaN(score)?null:score,good:get('GOOD'),fix:get('FIX'),natural:get('NATURAL'),native:get('NATIVE'),point:get('POINT')};
+}
+function showFeedback(f,userText){
+let box=$('chatFeedback');box.innerHTML='';
+let d=document.createElement('div');d.className='msg ai';
+let h=document.createElement('div');h.innerHTML='<b></b>';d.append(h);
+let add=(label,text)=>{if(!text)return;let p=document.createElement('div');p.style.marginTop='6px';let b=document.createElement('b');b.textContent=label+'：';p.append(b);p.append(document.createTextNode(text));d.append(p)};
+let ans=document.createElement('div');ans.style.marginTop='6px';
+let ab=document.createElement('b');ab.textContent='あなたの答え：';ans.append(ab);ans.append(document.createTextNode(userText));d.append(ans);
+if(f.score!==null)add('採点',f.score+'点（100点満点）');
+if(drillQ&&drillQ.en){
+let m=document.createElement('div');m.style.marginTop='6px';
+let mb=document.createElement('b');mb.textContent='模範解答：';m.append(mb);m.append(document.createTextNode(drillQ.en));
+let sp=document.createElement('button');sp.className='btn ghost spk';sp.textContent='🔊 聞く';sp.onclick=()=>say(drillQ.en);m.append(sp);d.append(m);
+}
+add('良かった点',f.good);
+add('文法ミスの修正',f.fix);
+add('より自然な言い方',f.natural);
+add('ネイティブがよく使う表現',f.native);
+add('覚えておきたいポイント',f.point);
+if(f.score===null){
+let p=document.createElement('div');p.style.whiteSpace='pre-wrap';p.style.marginTop='6px';p.textContent='';d.append(p);
+}
+box.append(d);
+}
+async function gradeDrill(userText){
+$('chatSend').disabled=true;$('chatInput').disabled=true;$('chatStatus').textContent='採点しています...';
+let prompt='You are an English coach for a Japanese beginner. The user translated a Japanese sentence into English.\nJapanese: '+drillQ.jp+'\nModel answer: '+(drillQ.en||'(none)')+'\nUser\'s answer: '+userText+'\nScore the user\'s answer out of 100 (grammar, word choice, naturalness). Reply in Japanese, in exactly this format:\nSCORE: <0-100>\nGOOD: <what was good, 1-2 sentences in Japanese>\nFIX: <grammar corrections in Japanese; write 「なし」 if there are no mistakes>\nNATURAL: <a more natural way to say it: English + short Japanese note>\nNATIVE: <an expression native speakers often use here: English + short Japanese note>\nPOINT: <one key point to remember, in Japanese>';
+try{
+let raw=await geminiText(prompt);
+let f=parseFeedback(raw);
+if(f.score===null&&!f.good&&!f.fix){
+let box=$('chatFeedback');box.innerHTML='';
+let d=document.createElement('div');d.className='msg ai';d.style.whiteSpace='pre-wrap';d.textContent=raw;box.append(d);
+}else{
+showFeedback(f,userText);
+}
+if(f.score!==null){
+drillStats.asked++;drillStats.sum+=f.score;
+if(f.score>=70)drillStats.correct++;
+if(f.score>=80){drillStats.streakGood++;drillStats.streakBad=0}else drillStats.streakGood=0;
+if(f.score<=50){drillStats.streakBad++;drillStats.streakGood=0}else drillStats.streakBad=0;
+if(drillStats.streakGood>=3&&drillStats.level<DRILL_LEVELS.length){drillStats.level++;drillStats.streakGood=0;toast('レベルアップ！「'+drillLevel().label+'」になりました')}
+if(drillStats.streakBad>=2&&drillStats.level>1){drillStats.level--;drillStats.streakBad=0;toast('レベルを少し下げました')}
+drillSaveStats();
+drillRecent.push({jp:drillQ.jp,en:drillQ.en||'',user:userText,score:f.score});
+if(drillRecent.length>10)drillRecent.shift();
+}
+$('chatStatus').textContent='';
+if(drillStats.asked>0&&drillStats.asked%10===0){
+$('chatNext').textContent='分析を見る →';$('chatNext').style.display='inline-block';
+}else{
+$('chatNext').textContent='次の問題へ →';$('chatNext').style.display='inline-block';
+}
+}catch(e){
+$('chatStatus').textContent='エラー：'+e.message;
+let box=$('chatFeedback');box.innerHTML='';
+let d=document.createElement('div');d.className='msg ai';
+let p=document.createElement('div');p.textContent='採点に失敗しました：'+e.message;d.append(p);
+if(drillQ&&drillQ.en){let m=document.createElement('div');m.style.marginTop='6px';m.innerHTML='<b>模範解答：</b>';m.append(document.createTextNode(drillQ.en));d.append(m)}
+let r=document.createElement('button');r.className='btn secondary';r.style.marginTop='8px';r.textContent='採点し直す';r.onclick=()=>gradeDrill(drillLastAnswer);d.append(r);
+box.append(d);
+$('chatSend').disabled=false;$('chatInput').disabled=false;
+}
+}
+async function showDrillAnalysis(){
+$('chatAnalysisBody').textContent='分析しています...';
+$('chatMain').style.display='none';$('chatAnalysis').style.display='block';
+let log=drillRecent.map(r=>'Q: '+r.jp+' / Model: '+r.en+' / User: '+r.user+' / Score: '+r.score).join('\n');
+let prompt='Analyze the last '+drillRecent.length+' answers of this beginner English learner. Reply in Japanese. Include: 1) 苦手な文法・表現 (2-3 items with brief examples), 2) 重点的に練習すべきポイント (1-2 sentences). Also add one final line in exactly this format: FOCUS: <short phrase in Japanese describing what to focus on next, e.g. 過去形の疑問文>\nConversation:\n'+log;
+try{
+let raw=await geminiText(prompt);
+let fm=raw.match(/FOCUS:\s*(.+)/);
+if(fm){drillStats.focus=fm[1].trim();drillSaveStats()}
+$('chatAnalysisBody').textContent=raw.replace(/\n?FOCUS:\s*.+$/,'').trim();
+}catch(e){
+$('chatAnalysisBody').textContent='分析に失敗しました：'+e.message+'。そのまま復習問題に進めます。';
+}
 }
 $('chatStart').onclick=()=>{
- if(!chatScen){toast('場面を選んでください');return}
- if(!chatHasKey()){toast('Gemini APIキーを登録してください');return}
- chatTopic=$('chatTopic').value.trim();
- chatHist=[];chatTurns=0;
- $('chatTitle').textContent='会話中：'+chatScen.label+(chatTopic?'「'+chatTopic+'」':'');
- $('chatLog').innerHTML='';$('chatTurns').textContent='0往復';
- $('chatSetup').style.display='none';$('chatNoKey').style.display='none';$('chatMain').style.display='block';$('chatSummary').style.display='none';
- chatHist.push({who:'ai',text:chatScen.open});
- chatAddMsg('ai',chatScen.open,'');
- $('chatStatus').textContent='英語で返事してみてください';
- $('chatInput').focus();
+if(!chatHasKey()){toast('Gemini APIキーを登録してください');return}
+$('chatSetup').style.display='none';$('chatNoKey').style.display='none';$('chatMain').style.display='block';$('chatAnalysis').style.display='none';
+drillQ=null;$('chatQ').textContent='--';$('chatFeedback').innerHTML='';$('chatNext').style.display='none';
+nextDrillQ();
 };
 $('chatSend').onclick=async()=>{
- let text=$('chatInput').value.trim();
- if(!text||chatBusy)return;
- chatBusy=true;$('chatInput').value='';
- chatHist.push({who:'me',text});
- chatAddMsg('me',text,'');
- let s=chatScen;
- let prompt='You are roleplaying as '+s.role+' in this scenario: '+s.scene+(chatTopic?'. The user wants to talk about: '+chatTopic:'')+'. The user is a beginner English learner from Japan. Reply in natural, simple everyday English (1-3 sentences), staying in character. Then add one short tip in Japanese.\nReply in exactly this format:\nREPLY: <your English reply>\nTIP: <one short tip in Japanese: if the user\'s English has a mistake, correct it briefly; otherwise suggest a more natural alternative expression>\nConversation so far:\n'+chatHistText()+'\nUser: '+text;
- try{
-  let raw=await chatAsk(prompt);
-  let p=parseChatReply(raw);
-  chatHist.push({who:'ai',text:p.reply});
-  chatTurns++;$('chatTurns').textContent=chatTurns+'往復';
-  chatAddMsg('ai',p.reply,p.tip);
-  $('chatStatus').textContent='英語で返事してみてください';
- }catch(e){}
- chatBusy=false;
+let text=$('chatInput').value.trim();
+if(!text||drillBusy||!drillQ)return;
+drillBusy=true;drillLastAnswer=text;
+await gradeDrill(text);
+drillBusy=false;
 };
 $('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('chatSend').click()});
-$('chatEnd').onclick=async()=>{
- if(!chatHist.length){toast('まだ会話がありません');return}
- $('chatStatus').textContent='ふりかえりを作っています...';
- let prompt='Summarize this English conversation practice for a beginner Japanese learner. Reply in Japanese. Include: 1) 良かった点 (1-2 sentences), 2) 次に気をつける点 (1 sentence), 3) three useful expressions from the conversation, each on its own line in exactly this format: EXPR: <English> | <Japanese>\nConversation:\n'+chatHistText();
- try{
-  let raw=await chatAsk(prompt);
-  let exprs=[];let body=raw.split('\n').filter(l=>{let m=l.match(/^EXPR:\s*(.+?)\s*\|\s*(.+)$/);if(m){exprs.push({en:m[1].trim(),ja:m[2].trim()});return false}return true}).join('\n');
-  let bd=document.createElement('div');bd.style.whiteSpace='pre-wrap';bd.textContent=body;$('chatSummaryBody').innerHTML='';$('chatSummaryBody').append(bd);
-  let ex=$('chatSummaryExprs');ex.innerHTML='';
-  exprs.forEach(x=>{let row=document.createElement('div');row.className='row';row.style.marginTop='6px';let t=document.createElement('div');t.style.flex='1';t.innerHTML='<b>'+escapeHTML(x.en)+'</b><br><span class="muted">'+escapeHTML(x.ja)+'</span>';let b=document.createElement('button');b.className='btn secondary';b.textContent='保存';b.onclick=()=>saveChatPhrase(x.en,x.ja,chatScen?chatScen.label:'会話練習');row.append(t,b);ex.append(row)});
-  $('chatMain').style.display='none';$('chatSummary').style.display='block';
-  $('chatStatus').textContent='';
- }catch(e){}
+$('chatNext').onclick=async()=>{
+if(drillStats.asked>0&&drillStats.asked%10===0){await showDrillAnalysis();return}
+$('chatFeedback').innerHTML='';$('chatNext').style.display='none';
+await nextDrillQ();
 };
-$('chatNew').onclick=()=>{chatHist=[];chatTurns=0;$('chatInput').value='';chatShowSetup()};
-$('chatAgain').onclick=()=>{chatHist=[];chatTurns=0;$('chatInput').value='';chatShowSetup()};
+$('chatResume').onclick=async()=>{
+$('chatAnalysis').style.display='none';$('chatMain').style.display='block';
+$('chatFeedback').innerHTML='';$('chatNext').style.display='none';
+await nextDrillQ();
+};
+$('chatNew').onclick=()=>{drillQ=null;$('chatInput').value='';chatShowSetup()};
 $('chatGoSettings').onclick=()=>page('learn');
-$('chatSuggest').onclick=()=>{
- if(!phrases.length){toast('保存した表現がまだありません');return}
- $('chatInput').value=phrases[chatSuggIdx].en;$('chatInput').focus();
-};
-$('chatSuggestNext').onclick=()=>chatSuggestNext();
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('install').hidden=false});$('install').onclick=async()=>{if(deferred){deferred.prompt();deferred=null}};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
